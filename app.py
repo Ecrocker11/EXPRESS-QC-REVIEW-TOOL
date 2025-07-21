@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
+import re
 
 st.title("🔍 CSV-to-PDF Comparison Tool")
 
@@ -34,11 +35,19 @@ def compile_project_address(data):
 
     return ", ".join([part for part in address_parts if part])
 
+def normalize_string(s):
+    return re.sub(r'[\s.,]', '', s).lower()
+
 def compare_fields(csv_data, pdf_text, fields_to_check):
     results = []
+    normalized_pdf_text = normalize_string(pdf_text)
     for label, field in fields_to_check.items():
         value = csv_data.get(field, "")
-        found = value in pdf_text
+        if label == "Project Address":
+            normalized_value = normalize_string(value)
+            found = normalized_value in normalized_pdf_text
+        else:
+            found = value in pdf_text
         results.append((label, field, value, "✅" if found else "❌"))
     return results
 
@@ -48,7 +57,6 @@ if csv_file and pdf_file:
         csv_data = extract_csv_fields(df)
         pdf_text = extract_pdf_text(pdf_file)
 
-        # Compile project address from multiple fields
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
 
