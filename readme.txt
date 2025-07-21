@@ -1,4 +1,4 @@
-# 🔍 CSV-to-PDF Comparison Tool
+# 🔍 EXPRESS-QC-REVIEW-TOOL
 
 This Streamlit app allows users to upload a CSV file and a multi-page PDF, then automatically compares key project data between the two. It’s designed to help validate engineering project deliverables like solar plansets, BOMs, and permit packages.
 
