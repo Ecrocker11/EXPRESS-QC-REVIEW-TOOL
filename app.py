@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
 import re
+import io
+import matplotlib.pyplot as plt
 
 st.title("🔍 CSV-to-PDF Comparison Tool")
 
@@ -36,19 +38,20 @@ def compile_project_address(data):
     return ", ".join([part for part in address_parts if part])
 
 def normalize_string(s):
-    return re.sub(r'[\s.,]', '', s).lower()
+    return re.sub(r'[\s.,]', '', str(s)).lower()
 
 def compare_fields(csv_data, pdf_text, fields_to_check):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
     for label, field in fields_to_check.items():
         value = csv_data.get(field, "")
-        if label == "Project Address":
+        if not value:
+            status = "⚠️ Missing in CSV"
+        else:
             normalized_value = normalize_string(value)
             found = normalized_value in normalized_pdf_text
-        else:
-            found = value in pdf_text
-        results.append((label, field, value, "✅" if found else "❌"))
+            status = "✅" if found else "❌"
+        results.append((label, field, value, status))
     return results
 
 if csv_file and pdf_file:
@@ -75,8 +78,36 @@ if csv_file and pdf_file:
 
         st.subheader("📋 Comparison Results")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check)
+
+        match_count = 0
+        mismatch_count = 0
+        missing_count = 0
+
+        output = io.StringIO()
+        output.write("Label,Field,Value,Status\n")
+
         for label, field, value, status in comparison:
             st.write(f"**{label}** ({field}): `{value}` → {status}")
+            output.write(f"{label},{field},{value},{status}\n")
+            if status == "✅":
+                match_count += 1
+            elif status == "❌":
+                mismatch_count += 1
+            elif status == "⚠️ Missing in CSV":
+                missing_count += 1
+
+        st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
+
+        # Visual summary
+        st.subheader("📊 Visual Summary")
+        labels = ['Matched', 'Unmatched', 'Missing in CSV']
+        sizes = [match_count, mismatch_count, missing_count]
+        colors = ['#8BC34A', '#FF5722', '#FFC107']
+
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
+        ax.axis('equal')
+        st.pyplot(fig)
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
