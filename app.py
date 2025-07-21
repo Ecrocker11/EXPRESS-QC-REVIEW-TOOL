@@ -5,10 +5,10 @@ import re
 import io
 import matplotlib.pyplot as plt
 
-st.title("🔍 CSV-to-PDF Comparison Tool")
+st.title("🔍 EXPRESS QC REVIEW TOOL")
 
-csv_file = st.file_uploader("Upload CSV File", type=["csv"])
-pdf_file = st.file_uploader("Upload PDF File", type=["pdf"])
+csv_file = st.file_uploader("Upload ENGINEERING PROJECT CSV", type=["csv"])
+pdf_file = st.file_uploader("Upload PLAN SET PDF", type=["pdf"])
 
 def extract_pdf_text(doc):
     pdf_text = ""
