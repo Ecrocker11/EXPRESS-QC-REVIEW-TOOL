@@ -20,6 +20,20 @@ def extract_csv_fields(df):
     df = df.set_index("Field")["Value"].to_dict()
     return df
 
+def compile_project_address(data):
+    street1 = str(data.get("Engineering_Project__c.Installation_Street_Address_1__c", "")).strip()
+    street2 = str(data.get("Engineering_Project__c.Installation_Street_Address_2__c", "")).strip()
+    city = str(data.get("Engineering_Project__c.Installation_City__c", "")).strip()
+    state = str(data.get("Engineering_Project__c.Installation_State__c", "")).strip()
+    zip_code = str(data.get("Engineering_Project__c.Installation_Zip_Code__c", "")).strip()
+
+    address_parts = [street1]
+    if street2:
+        address_parts.append(street2)
+    address_parts.extend([city, state, zip_code])
+
+    return ", ".join([part for part in address_parts if part])
+
 def compare_fields(csv_data, pdf_text, fields_to_check):
     results = []
     for label, field in fields_to_check.items():
@@ -34,9 +48,13 @@ if csv_file and pdf_file:
         csv_data = extract_csv_fields(df)
         pdf_text = extract_pdf_text(pdf_file)
 
+        # Compile project address from multiple fields
+        compiled_project_address = compile_project_address(csv_data)
+        csv_data["Compiled_Project_Address"] = compiled_project_address
+
         fields_to_check = {
             "Customer Address": "Engineering_Project__c.Account_Address_as_Text__c",
-            "Project Address": "Engineering_Project__c.Subject_Lines__c",
+            "Project Address": "Compiled_Project_Address",
             "License Number": "Engineering_Project__c.Account_License_as_Text__c",
             "Utility": "Engineering_Project__c.Utility__c",
             "Module Manufacturer": "Engineering_Project__c.Module_Manufacturer__c",
