@@ -21,6 +21,7 @@ def extract_pdf_line_values(doc):
     lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
+    contractor_name = lines[117] if len(lines) >= 118 else ""
     for i, line in enumerate(lines):
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
@@ -30,7 +31,7 @@ def extract_pdf_line_values(doc):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
-    return module_qty, inverter_qty
+    return module_qty, inverter_qty, contractor_name
 
 def extract_csv_fields(df):
     df.columns = df.columns.str.strip()
@@ -61,9 +62,10 @@ def is_numeric(value):
     except ValueError:
         return False
 
-def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf):
+def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
+    normalized_contractor_pdf = normalize_string(contractor_name_pdf)
     for label, field in fields_to_check.items():
         value = csv_data.get(field, "")
         if not value:
@@ -73,6 +75,9 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if str(value) == str(module_qty_pdf) else "❌"
             elif label == "Inverter Quantity":
                 status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
+            elif label == "Contractor Name":
+                normalized_value = normalize_string(value)
+                status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
             elif label == "AHJ":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_pdf_text else "❌"
@@ -94,7 +99,7 @@ if csv_file and pdf_file:
         pdf_bytes = pdf_file.read()
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             pdf_text = extract_pdf_text(doc)
-            module_qty_pdf, inverter_qty_pdf = extract_pdf_line_values(doc)
+            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf = extract_pdf_line_values(doc)
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -110,11 +115,12 @@ if csv_file and pdf_file:
             "Inverter Manufacturer": "Engineering_Project__c.Inverter_Manufacturer__c",
             "Inverter Part Number": "Engineering_Project__c.Inverter_Part_Number__c",
             "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c",
-            "AHJ": "Engineering_Project__c.AHJ__c"
+            "AHJ": "Engineering_Project__c.AHJ__c",
+            "Contractor Name": "Engineering_Project__c.Customer__r.Name"
         }
 
         st.subheader("📋 Comparison Results")
-        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf)
+        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
         match_count = 0
         mismatch_count = 0
