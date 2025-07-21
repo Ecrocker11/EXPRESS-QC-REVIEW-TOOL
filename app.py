@@ -41,6 +41,13 @@ def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
 
+def is_numeric(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
 def compare_fields(csv_data, pdf_text, fields_to_check):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
@@ -49,8 +56,11 @@ def compare_fields(csv_data, pdf_text, fields_to_check):
         if not value:
             status = "⚠️ Missing in CSV"
         else:
-            normalized_value = normalize_string(value)
-            found = normalized_value in normalized_pdf_text
+            if is_numeric(value):
+                found = str(value) in pdf_text
+            else:
+                normalized_value = normalize_string(value)
+                found = normalized_value in normalized_pdf_text
             status = "✅" if found else "❌"
         results.append((label, field, value, status))
     return results
