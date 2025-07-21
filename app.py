@@ -10,16 +10,14 @@ st.title("🔍 CSV-to-PDF Comparison Tool")
 csv_file = st.file_uploader("Upload CSV File", type=["csv"])
 pdf_file = st.file_uploader("Upload PDF File", type=["pdf"])
 
-def extract_pdf_text(pdf_file):
+def extract_pdf_text(doc):
     pdf_text = ""
-    with fitz.open(stream=pdf_file.read(), filetype="pdf") as doc:
-        for page in doc:
-            pdf_text += page.get_text()
+    for page in doc:
+        pdf_text += page.get_text()
     return pdf_text
 
-def extract_pdf_line_values(pdf_file):
-    with fitz.open(stream=pdf_file.read(), filetype="pdf") as doc:
-        first_page_text = doc[0].get_text()
+def extract_pdf_line_values(doc):
+    first_page_text = doc[0].get_text()
     lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
@@ -89,8 +87,11 @@ if csv_file and pdf_file:
     try:
         df = pd.read_csv(csv_file)
         csv_data = extract_csv_fields(df)
-        pdf_text = extract_pdf_text(pdf_file)
-        module_qty_pdf, inverter_qty_pdf = extract_pdf_line_values(pdf_file)
+
+        pdf_bytes = pdf_file.read()
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            pdf_text = extract_pdf_text(doc)
+            module_qty_pdf, inverter_qty_pdf = extract_pdf_line_values(doc)
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -127,6 +128,7 @@ if csv_file and pdf_file:
                 mismatch_count += 1
             elif status == "⚠️ Missing in CSV":
                 missing_count += 1
+
         st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
 
         st.subheader("📊 Visual Summary")
