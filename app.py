@@ -21,13 +21,15 @@ def extract_pdf_line_values(doc):
     lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
-    if len(lines) >= 20:
-        module_match = re.search(r'\((\d+)\)', lines[17])
-        inverter_match = re.search(r'\((\d+)\)', lines[19])
-        if module_match:
-            module_qty = module_match.group(1)
-        if inverter_match:
-            inverter_qty = inverter_match.group(1)
+    for i, line in enumerate(lines):
+        if 'module:' in line.lower() and i + 1 < len(lines):
+            match = re.search(r'\((\d+)\)', lines[i + 1])
+            if match:
+                module_qty = match.group(1)
+        if 'inverter:' in line.lower() and i + 1 < len(lines):
+            match = re.search(r'\((\d+)\)', lines[i + 1])
+            if match:
+                inverter_qty = match.group(1)
     return module_qty, inverter_qty
 
 def extract_csv_fields(df):
@@ -42,12 +44,10 @@ def compile_project_address(data):
     city = str(data.get("Engineering_Project__c.Installation_City__c", "")).strip()
     state = str(data.get("Engineering_Project__c.Installation_State__c", "")).strip()
     zip_code = str(data.get("Engineering_Project__c.Installation_Zip_Code__c", "")).strip()
-
     address_parts = [street1]
     if street2:
         address_parts.append(street2)
     address_parts.extend([city, state, zip_code])
-
     return ", ".join([part for part in address_parts if part])
 
 def normalize_string(s):
@@ -73,6 +73,9 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if str(value) == str(module_qty_pdf) else "❌"
             elif label == "Inverter Quantity":
                 status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
+            elif label == "AHJ":
+                normalized_value = normalize_string(value)
+                status = "✅" if normalized_value in normalized_pdf_text else "❌"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else "❌"
@@ -106,7 +109,8 @@ if csv_file and pdf_file:
             "Module Quantity": "Engineering_Project__c.Module_Quantity__c",
             "Inverter Manufacturer": "Engineering_Project__c.Inverter_Manufacturer__c",
             "Inverter Part Number": "Engineering_Project__c.Inverter_Part_Number__c",
-            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
+            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c",
+            "AHJ": "Engineering_Project__c.AHJ__c"
         }
 
         st.subheader("📋 Comparison Results")
