@@ -17,6 +17,21 @@ def extract_pdf_text(pdf_file):
             pdf_text += page.get_text()
     return pdf_text
 
+def extract_pdf_line_values(pdf_file):
+    with fitz.open(stream=pdf_file.read(), filetype="pdf") as doc:
+        first_page_text = doc[0].get_text()
+    lines = first_page_text.splitlines()
+    module_qty = None
+    inverter_qty = None
+    if len(lines) >= 20:
+        module_match = re.search(r'\((\d+)\)', lines[17])
+        inverter_match = re.search(r'\((\d+)\)', lines[19])
+        if module_match:
+            module_qty = module_match.group(1)
+        if inverter_match:
+            inverter_qty = inverter_match.group(1)
+    return module_qty, inverter_qty
+
 def extract_csv_fields(df):
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["Field", "Value"])
@@ -48,7 +63,7 @@ def is_numeric(value):
     except ValueError:
         return False
 
-def compare_fields(csv_data, pdf_text, fields_to_check):
+def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
     for label, field in fields_to_check.items():
@@ -56,12 +71,17 @@ def compare_fields(csv_data, pdf_text, fields_to_check):
         if not value:
             status = "⚠️ Missing in CSV"
         else:
-            if is_numeric(value):
+            if label == "Module Quantity":
+                status = "✅" if str(value) == str(module_qty_pdf) else "❌"
+            elif label == "Inverter Quantity":
+                status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
+            elif is_numeric(value):
                 found = str(value) in pdf_text
+                status = "✅" if found else "❌"
             else:
                 normalized_value = normalize_string(value)
                 found = normalized_value in normalized_pdf_text
-            status = "✅" if found else "❌"
+                status = "✅" if found else "❌"
         results.append((label, field, value, status))
     return results
 
@@ -70,6 +90,7 @@ if csv_file and pdf_file:
         df = pd.read_csv(csv_file)
         csv_data = extract_csv_fields(df)
         pdf_text = extract_pdf_text(pdf_file)
+        module_qty_pdf, inverter_qty_pdf = extract_pdf_line_values(pdf_file)
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -88,7 +109,7 @@ if csv_file and pdf_file:
         }
 
         st.subheader("📋 Comparison Results")
-        comparison = compare_fields(csv_data, pdf_text, fields_to_check)
+        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf)
 
         match_count = 0
         mismatch_count = 0
@@ -106,7 +127,6 @@ if csv_file and pdf_file:
                 mismatch_count += 1
             elif status == "⚠️ Missing in CSV":
                 missing_count += 1
-
         st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
 
         st.subheader("📊 Visual Summary")
