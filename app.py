@@ -38,7 +38,8 @@ def compile_project_address(data):
     return ", ".join([part for part in address_parts if part])
 
 def normalize_string(s):
-    return re.sub(r'[\s.,]', '', str(s)).lower()
+    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
+    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
 
 def compare_fields(csv_data, pdf_text, fields_to_check):
     results = []
@@ -98,7 +99,6 @@ if csv_file and pdf_file:
 
         st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
 
-        # Visual summary
         st.subheader("📊 Visual Summary")
         labels = ['Matched', 'Unmatched', 'Missing in CSV']
         sizes = [match_count, mismatch_count, missing_count]
