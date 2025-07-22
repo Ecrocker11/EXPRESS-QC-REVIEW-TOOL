@@ -20,6 +20,12 @@ def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
 
+def normalize_quantity(value):
+    try:
+        return str(int(value))
+    except:
+        return str(value)
+
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
     lines = first_page_text.splitlines()
@@ -30,19 +36,16 @@ def extract_pdf_line_values(doc, contractor_name_csv):
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
     for i, line in enumerate(lines):
-        # Look for module quantity
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
-                module_qty = match.group(1)
+                module_qty = normalize_quantity(match.group(1))
 
-        # Look for inverter quantity
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
-                inverter_qty = match.group(1)
+                inverter_qty = normalize_quantity(match.group(1))
 
-        # Match contractor name by normalized value
         if normalize_string(line) == normalized_contractor_csv:
             contractor_name = line.strip()
 
@@ -95,9 +98,9 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
             status = "⚠️ Missing in CSV"
         else:
             if label == "Module Quantity":
-                status = "✅" if str(value) == str(module_qty_pdf) else "❌"
+                status = "✅" if normalize_quantity(value) == module_qty_pdf else "❌"
             elif label == "Inverter Quantity":
-                status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
+                status = "✅" if normalize_quantity(value) == inverter_qty_pdf else "❌"
             elif label == "Contractor Name":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
