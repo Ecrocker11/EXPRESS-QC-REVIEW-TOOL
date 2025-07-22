@@ -174,8 +174,8 @@ if csv_file and pdf_file:
             elif status.startswith("⚠️"):
                 missing_count += 1
 
-        st.subheader("📊 Summary")
-        labels = ['Pass', 'Fail', 'Express QC Review Results']
+        st.subheader("📊 SUMMARY")
+        labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
 
