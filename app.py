@@ -164,8 +164,8 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            st.write(f"**{label}** ({field}): `{value}` → {status}")
-            output.write(f"{label},{field},{value},{status}\n")
+            st.write(f"**{label}**: `{value}` → {status}")
+            output.write(f"{label},{value},{status}\n")
             if status.startswith("✅"):
                 match_count += 1
             elif status.startswith("❌"):
