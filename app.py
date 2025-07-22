@@ -154,7 +154,7 @@ if csv_file and pdf_file:
             "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
         }
 
-        st.subheader("📋 Comparison Results")
+        st.subheader("📋 COMPARISON RESULTS")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
         match_count = 0
