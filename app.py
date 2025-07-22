@@ -51,6 +51,18 @@ def compile_project_address(data):
     address_parts.extend([city, state, zip_code])
     return ", ".join([part for part in address_parts if part])
 
+def compile_customer_address(data):
+    street1 = str(data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", "")).strip()
+    street2 = str(data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_2__c", "")).strip()
+    city = str(data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", "")).strip()
+    state = str(data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", "")).strip()
+    zip_code = str(data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")).strip()
+    address_parts = [street1]
+    if street2:
+        address_parts.append(street2)
+    address_parts.extend([city, state, zip_code])
+    return ", ".join([part for part in address_parts if part])
+
 def normalize_string(s):
     s = re.sub(r'&lt;[^&gt;]+&gt;', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
@@ -106,7 +118,7 @@ if csv_file and pdf_file:
 
         fields_to_check = {
             "Contractor Name": "Engineering_Project__c.Customer__r.Name",
-            "Customer Address": "Engineering_Project__c.Account_Address_as_Text__c",
+            "Customer Address": "Compiled_Customer_Address",
             "License Number": "Engineering_Project__c.Account_License_as_Text__c",
             "Project Address": "Compiled_Project_Address",
             "AHJ": "Engineering_Project__c.AHJ__c",
