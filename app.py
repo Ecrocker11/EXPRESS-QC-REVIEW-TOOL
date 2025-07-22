@@ -5,6 +5,21 @@ import re
 import io
 import matplotlib.pyplot as plt
 
+# Set wider layout and custom width
+st.set_page_config(layout="wide")
+st.markdown(
+    """
+    <style>
+        .reportview-container .main .block-container {
+            max-width: 1600px;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
@@ -30,19 +45,16 @@ def extract_pdf_line_values(doc, contractor_name_csv):
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
     for i, line in enumerate(lines):
-        # Look for module quantity
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
 
-        # Look for inverter quantity
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
 
-        # Match contractor name by substring
         if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
@@ -164,14 +176,18 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            st.write(f"**{label}**: `{value}` → {status}")
-            output.write(f"{label},{value},{status}\n")
+            output.write(f"{label},{field},{value},{status}\n")
             if status.startswith("✅"):
                 match_count += 1
             elif status.startswith("❌"):
                 mismatch_count += 1
             elif status.startswith("⚠️"):
                 missing_count += 1
+
+            if status.startswith("❌"):
+                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+            else:
+                st.write(f"**{label}**: `{value}` → {status}")
 
         st.subheader("📊 SUMMARY")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
@@ -185,6 +201,6 @@ if csv_file and pdf_file:
 
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
-    
+
     except Exception as e:
         st.error(f"Error processing files: {e}")
