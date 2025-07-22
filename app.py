@@ -137,20 +137,20 @@ if csv_file and pdf_file:
         csv_data["Compiled_Customer_Address"] = compiled_customer_address
 
         fields_to_check = {
-            "Contractor Name": "Engineering_Project__c.Customer__r.Name",
-            "Contractor Address": "Compiled_Customer_Address",
-            "Contractor Phone Number": "Engineering_Project__c.Customer__r.Phone",
-            "Contractor License Number": "Engineering_Project__c.Account_License_as_Text__c",
-            "Property Owner": "Engineering_Project__c.Property_Owner_Name__c",
-            "Project Address": "Compiled_Project_Address",
-            "AHJ": "Engineering_Project__c.AHJ__c",
-            "Utility": "Engineering_Project__c.Utility__c",
-            "Module Manufacturer": "Engineering_Project__c.Module_Manufacturer__c",
-            "Module Part Number": "Engineering_Project__c.Module_Part_Number__c",
-            "Module Quantity": "Engineering_Project__c.Module_Quantity__c",
-            "Inverter Manufacturer": "Engineering_Project__c.Inverter_Manufacturer__c",
-            "Inverter Part Number": "Engineering_Project__c.Inverter_Part_Number__c",
-            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
+            "Contractor Name",
+            "Contractor Address",
+            "Contractor Phone Number",
+            "Contractor License Number",
+            "Property Owner",
+            "Project Address",
+            "AHJ",
+            "Utility",
+            "Module Manufacturer",
+            "Module Part Number",
+            "Module Quantity",
+            "Inverter Manufacturer",
+            "Inverter Part Number",
+            "Inverter Quantity"
         }
 
         st.subheader("📋 Comparison Results")
