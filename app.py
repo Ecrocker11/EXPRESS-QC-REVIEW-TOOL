@@ -52,7 +52,7 @@ def compile_project_address(data):
     return ", ".join([part for part in address_parts if part])
 
 def normalize_string(s):
-    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
+    s = re.sub(r'&lt;[^&gt;]+&gt;', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
 
 def is_numeric(value):
@@ -150,6 +150,10 @@ if csv_file and pdf_file:
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
         ax.axis('equal')
         st.pyplot(fig)
+
+        # ✅ New Feature: Download PDF Text
+        st.subheader("📄 Download PDF Text")
+        st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
