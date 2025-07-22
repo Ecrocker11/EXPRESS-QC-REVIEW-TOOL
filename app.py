@@ -5,6 +5,8 @@ import re
 import io
 import matplotlib.pyplot as plt
 
+st.set_page_config(layout="wide")
+
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
