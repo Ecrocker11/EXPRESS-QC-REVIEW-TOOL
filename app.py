@@ -7,19 +7,6 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
 
-st.markdown(
-    """
-    <style>
-        .reportview-container .main .block-container {
-            max-width: 1600px;
-            padding-left: 200rem;
-            padding-right: 200rem;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
