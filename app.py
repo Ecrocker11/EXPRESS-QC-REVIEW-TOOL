@@ -87,6 +87,8 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if str(value) == str(module_qty_pdf) else "❌"
             elif label == "Inverter Quantity":
                 status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
+            elif label == "Propert Owner":
+                status = "✅" if str(value) == str(property_owner_name_pdf) else "❌"
             elif label == "Contractor Name":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
@@ -123,6 +125,7 @@ if csv_file and pdf_file:
             "Contractor Name": "Engineering_Project__c.Customer__r.Name",
             "Customer Address": "Compiled_Customer_Address",
             "License Number": "Engineering_Project__c.Account_License_as_Text__c",
+            "Propery Owner": "Engineering_Project__c.Property_Owner_Name__c",
             "Project Address": "Compiled_Project_Address",
             "AHJ": "Engineering_Project__c.AHJ__c",
             "Utility": "Engineering_Project__c.Utility__c",
