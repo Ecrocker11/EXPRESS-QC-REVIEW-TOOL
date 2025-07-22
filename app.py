@@ -16,21 +16,36 @@ def extract_pdf_text(doc):
         pdf_text += page.get_text()
     return pdf_text
 
-def extract_pdf_line_values(doc):
+def normalize_string(s):
+    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
+    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
+
+def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
     lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
-    contractor_name = lines[117] if len(lines) >= 118 else ""
+    contractor_name = ""
+
+    normalized_contractor_csv = normalize_string(contractor_name_csv)
+
     for i, line in enumerate(lines):
+        # Look for module quantity
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
+
+        # Look for inverter quantity
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
+
+        # Match contractor name by normalized value
+        if normalize_string(line) == normalized_contractor_csv:
+            contractor_name = line.strip()
+
     return module_qty, inverter_qty, contractor_name
 
 def extract_csv_fields(df):
@@ -63,10 +78,6 @@ def compile_customer_address(data):
     address_parts.extend([city, state, zip_code])
     return ", ".join([part for part in address_parts if part])
 
-def normalize_string(s):
-    s = re.sub(r'&lt;[^&gt;]+&gt;', '', str(s))  # Remove HTML tags
-    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
-
 def is_numeric(value):
     try:
         float(value)
@@ -87,10 +98,6 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if str(value) == str(module_qty_pdf) else "❌"
             elif label == "Inverter Quantity":
                 status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
-            elif label == "Contractor Phone #":
-                status = "✅" if str(value) == str(phone_pdf) else "❌"
-            elif label == "Property Owner":
-                status = "✅" if str(value) == str(property_owner_name_pdf) else "❌"
             elif label == "Contractor Name":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
@@ -115,11 +122,12 @@ if csv_file and pdf_file:
         pdf_bytes = pdf_file.read()
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             pdf_text = extract_pdf_text(doc)
-            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf = extract_pdf_line_values(doc)
+            contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
+            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf = extract_pdf_line_values(doc, contractor_name_csv)
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
-        
+
         compiled_customer_address = compile_customer_address(csv_data)
         csv_data["Compiled_Customer_Address"] = compiled_customer_address
 
@@ -172,7 +180,6 @@ if csv_file and pdf_file:
         ax.axis('equal')
         st.pyplot(fig)
 
-        # ✅ New Feature: Download PDF Text
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
