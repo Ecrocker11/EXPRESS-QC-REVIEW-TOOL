@@ -186,5 +186,51 @@ if csv_file and pdf_file:
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
+
+st.markdown("""
+    <style>
+    .comparison-row {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid #ddd;
+    }
+    .comparison-row div {
+        flex: 1;
+        padding: 0 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .comparison-header {
+        font-weight: bold;
+        background-color: #f0f0f0;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Render header
+st.markdown("""
+<div class="comparison-row comparison-header">
+    <div>Label</div>
+    <div>Field</div>
+    <div>Value</div>
+    <div>Status</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Render each comparison row
+for label, field, value, status in comparison:
+    st.markdown(f"""
+    <div class="comparison-row">
+        <div>{label}</div>
+        <div>{field}</div>
+        <div>{value}</div>
+        <div>{status}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    
     except Exception as e:
         st.error(f"Error processing files: {e}")
