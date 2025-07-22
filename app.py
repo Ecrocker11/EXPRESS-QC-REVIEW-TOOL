@@ -5,21 +5,6 @@ import re
 import io
 import matplotlib.pyplot as plt
 
-# Set wider layout and custom width
-st.set_page_config(layout="wide")
-st.markdown(
-    """
-    <style>
-        .reportview-container .main .block-container {
-            max-width: 1600px;
-            padding-left: 2rem;
-            padding-right: 2rem;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
