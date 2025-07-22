@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -42,8 +43,8 @@ def extract_pdf_line_values(doc, contractor_name_csv):
             if match:
                 inverter_qty = match.group(1)
 
-        # Match contractor name by normalized value
-        if normalize_string(line) == normalized_contractor_csv:
+        # Match contractor name by substring
+        if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
     return module_qty, inverter_qty, contractor_name
@@ -98,19 +99,15 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if str(value) == str(module_qty_pdf) else "❌"
             elif label == "Inverter Quantity":
                 status = "✅" if str(value) == str(inverter_qty_pdf) else "❌"
-            elif label == "Contractor Name":
-                normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
-            elif label == "AHJ":
-                normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_pdf_text else "❌"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else "❌"
             else:
                 normalized_value = normalize_string(value)
-                found = normalized_value in normalized_pdf_text
-                status = "✅" if found else "❌"
+                if label == "Contractor Name":
+                    status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
+                else:
+                    status = "✅" if normalized_value in normalized_pdf_text else "❌"
         results.append((label, field, value, status))
     return results
 
