@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -31,16 +30,19 @@ def extract_pdf_line_values(doc, contractor_name_csv):
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
     for i, line in enumerate(lines):
+        # Look for module quantity
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
 
+        # Look for inverter quantity
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
 
+        # Match contractor name by substring
         if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
@@ -162,12 +164,7 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            st.markdown(
-                f"<div style='display: flex; flex-wrap: nowrap; gap: 1rem;'>"
-                f"<strong>{label}</strong> ({field}): <code>{value}</code> → {status}"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+            st.write(f"**{label}** ({field}): `{value}` → {status}")
             output.write(f"{label},{field},{value},{status}\n")
             if status.startswith("✅"):
                 match_count += 1
@@ -184,7 +181,7 @@ if csv_file and pdf_file:
         fig, ax = plt.subplots()
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
         ax.axis('equal')
-        st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig)
 
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
