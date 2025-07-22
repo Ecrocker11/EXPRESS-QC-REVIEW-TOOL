@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -5,17 +6,10 @@ import re
 import io
 import matplotlib.pyplot as plt
 
-# Enable wide layout
-st.set_page_config(page_title="EXPRESS QC REVIEW TOOL", layout="wide")
-
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
-# Use columns for side-by-side file uploaders
-col1, col2 = st.columns(2)
-with col1:
-    csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
-with col2:
-    pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
+csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
+pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
@@ -37,19 +31,16 @@ def extract_pdf_line_values(doc, contractor_name_csv):
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
     for i, line in enumerate(lines):
-        # Look for module quantity
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
 
-        # Look for inverter quantity
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
 
-        # Match contractor name by substring
         if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
@@ -171,7 +162,12 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            st.write(f"**{label}** ({field}): `{value}` → {status}")
+            st.markdown(
+                f"<div style='display: flex; flex-wrap: nowrap; gap: 1rem;'>"
+                f"<strong>{label}</strong> ({field}): <code>{value}</code> → {status}"
+                f"</div>",
+                unsafe_allow_html=True
+            )
             output.write(f"{label},{field},{value},{status}\n")
             if status.startswith("✅"):
                 match_count += 1
