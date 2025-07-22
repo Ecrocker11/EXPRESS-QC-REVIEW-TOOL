@@ -115,6 +115,9 @@ if csv_file and pdf_file:
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
+        
+        compiled_customer_address = compile_customer_address(csv_data)
+        csv_data["Compiled_Customer_Address"] = compiled_customer_address
 
         fields_to_check = {
             "Contractor Name": "Engineering_Project__c.Customer__r.Name",
