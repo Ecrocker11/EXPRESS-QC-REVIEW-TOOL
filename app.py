@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -6,10 +5,17 @@ import re
 import io
 import matplotlib.pyplot as plt
 
+# Enable wide layout
+st.set_page_config(page_title="EXPRESS QC REVIEW TOOL", layout="wide")
+
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
-csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
-pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
+# Use columns for side-by-side file uploaders
+col1, col2 = st.columns(2)
+with col1:
+    csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
+with col2:
+    pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
@@ -154,7 +160,7 @@ if csv_file and pdf_file:
             "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
         }
 
-        st.subheader("📋 COMPARISON RESULTS")
+        st.subheader("📋 Comparison Results")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
         match_count = 0
@@ -182,7 +188,7 @@ if csv_file and pdf_file:
         fig, ax = plt.subplots()
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
         ax.axis('equal')
-        st.pyplot(fig)
+        st.pyplot(fig, use_container_width=True)
 
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
