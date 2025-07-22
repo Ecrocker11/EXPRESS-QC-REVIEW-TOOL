@@ -174,8 +174,6 @@ if csv_file and pdf_file:
             elif status.startswith("⚠️"):
                 missing_count += 1
 
-        st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
-
         st.subheader("📊 Visual Summary")
         labels = ['Matched', 'Unmatched', 'Missing in CSV']
         sizes = [match_count, mismatch_count, missing_count]
