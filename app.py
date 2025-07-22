@@ -164,12 +164,7 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            
-if status.startswith("❌"):
-    st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-else:
-    st.write(f"**{label}**: `{value}` → {status}")
-
+            st.write(f"**{label}**: `{value}` → {status}")
             output.write(f"{label},{value},{status}\n")
             if status.startswith("✅"):
                 match_count += 1
