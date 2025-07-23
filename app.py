@@ -10,44 +10,38 @@ st.title("🔍 EXPRESS QC REVIEW TOOL")
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
+def normalize_string(s):
+    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
+    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
+
 def extract_pdf_text(doc):
     pdf_text = ""
     for page in doc:
         pdf_text += page.get_text()
     return pdf_text
 
-def normalize_string(s):
-    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
-    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
-
-def normalize_quantity(value):
-    try:
-        return str(int(value))
-    except:
-        return str(value)
-
 def extract_pdf_line_values(doc, contractor_name_csv):
+    first_page_text = doc[0].get_text()
+    lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
     contractor_name = ""
 
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
-    for page in doc:
-        lines = page.get_text().splitlines()
-        for i, line in enumerate(lines):
-            if 'module:' in line.lower() and i + 1 < len(lines):
-                match = re.search(r'\((\d+)\)', lines[i + 1])
-                if match:
-                    module_qty = normalize_quantity(match.group(1))
+    for i, line in enumerate(lines):
+        if 'module:' in line.lower() and i + 1 < len(lines):
+            match = re.search(r'\((\d+)\)', lines[i + 1])
+            if match:
+                module_qty = match.group(1)
 
-            if 'inverter:' in line.lower() and i + 1 < len(lines):
-                match = re.search(r'\((\d+)\)', lines[i + 1])
-                if match:
-                    inverter_qty = normalize_quantity(match.group(1))
+        if 'inverter:' in line.lower() and i + 1 < len(lines):
+            match = re.search(r'\((\d+)\)', lines[i + 1])
+            if match:
+                inverter_qty = match.group(1)
 
-            if normalize_string(line) == normalized_contractor_csv:
-                contractor_name = line.strip()
+        if normalized_contractor_csv in normalize_string(line):
+            contractor_name = line.strip()
 
     return module_qty, inverter_qty, contractor_name
 
@@ -88,44 +82,48 @@ def is_numeric(value):
     except ValueError:
         return False
 
-def clean_label(label):
-    return re.sub(r"\s*\([^)]*\)", "", label).strip()
-
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
     normalized_contractor_pdf = normalize_string(contractor_name_pdf)
     for label, field in fields_to_check.items():
         value = csv_data.get(field, "")
-        display_label = clean_label(label)
+        pdf_value = ""
+        status = ""
         if not value:
             status = "⚠️ Missing in CSV"
-            expected = ""
         else:
             if label == "Module Quantity":
-                expected = module_qty_pdf
-                status = "✅" if normalize_quantity(value) == module_qty_pdf else f"❌ (Expected: {expected})"
+                pdf_value = module_qty_pdf
+                try:
+                    csv_val_int = int(str(value).lstrip("0")) if str(value).isdigit() else value
+                    pdf_val_int = int(str(pdf_value).lstrip("0")) if str(pdf_value).isdigit() else pdf_value
+                    status = "✅" if csv_val_int == pdf_val_int else f"❌ (PDF: {pdf_value})"
+                except:
+                    status = f"❌ (PDF: {pdf_value})"
             elif label == "Inverter Quantity":
-                expected = inverter_qty_pdf
-                status = "✅" if normalize_quantity(value) == inverter_qty_pdf else f"❌ (Expected: {expected})"
+                pdf_value = inverter_qty_pdf
+                try:
+                    csv_val_int = int(str(value).lstrip("0")) if str(value).isdigit() else value
+                    pdf_val_int = int(str(pdf_value).lstrip("0")) if str(pdf_value).isdigit() else pdf_value
+                    status = "✅" if csv_val_int == pdf_val_int else f"❌ (PDF: {pdf_value})"
+                except:
+                    status = f"❌ (PDF: {pdf_value})"
             elif label == "Contractor Name":
+                pdf_value = contractor_name_pdf
                 normalized_value = normalize_string(value)
-                expected = contractor_name_pdf
-                status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (Expected: {expected})"
+                status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (PDF: {pdf_value})"
             elif label == "AHJ":
                 normalized_value = normalize_string(value)
-                expected = value
-                status = "✅" if normalized_value in normalized_pdf_text else f"❌ (Expected: {expected})"
+                status = "✅" if normalized_value in normalized_pdf_text else f"❌ (PDF: Not Found)"
             elif is_numeric(value):
-                expected = value
                 found = str(value) in pdf_text
-                status = "✅" if found else f"❌ (Expected: {expected})"
+                status = "✅" if found else f"❌ (PDF: Not Found)"
             else:
                 normalized_value = normalize_string(value)
-                expected = value
                 found = normalized_value in normalized_pdf_text
-                status = "✅" if found else f"❌ (Expected: {expected})"
-        results.append((display_label, field, value, status))
+                status = "✅" if found else f"❌ (PDF: Not Found)"
+        results.append((label, field, value, status))
     return results
 
 if csv_file and pdf_file:
@@ -165,24 +163,29 @@ if csv_file and pdf_file:
         st.subheader("📋 Comparison Results")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
-        match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
-        mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
-        missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
-
-        total_fields = len(comparison)
-        st.markdown(f"**Summary:** {total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
+        match_count = 0
+        mismatch_count = 0
+        missing_count = 0
 
         output = io.StringIO()
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            st.write(f"**{label}**: `{value}` → {status}")
             output.write(f"{label},{field},{value},{status}\n")
+            if status.startswith("✅"):
+                match_count += 1
+            elif status.startswith("❌"):
+                mismatch_count += 1
+            elif status.startswith("⚠️"):
+                missing_count += 1
 
-        st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
+            if status.startswith("❌"):
+                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+            else:
+                st.write(f"**{label}**: `{value}` → {status}")
 
-        st.subheader("📊 Visual Summary")
-        labels = ['Matched', 'Unmatched', 'Missing in CSV']
+        st.subheader("📊 SUMMARY")
+        labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
 
