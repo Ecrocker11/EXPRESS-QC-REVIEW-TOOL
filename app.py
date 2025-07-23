@@ -161,7 +161,6 @@ if csv_file and pdf_file:
         }
 
         st.subheader("📋 Comparison Results")
-
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
@@ -185,10 +184,6 @@ if csv_file and pdf_file:
                 st.write(f"**{label}**: `{value}` → {status}")
 
         st.subheader("📊 SUMMARY")    
-        
-        total_fields = len(comparison)
-        st.markdown(f"{total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
-        
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
