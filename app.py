@@ -88,33 +88,44 @@ def is_numeric(value):
     except ValueError:
         return False
 
+def clean_label(label):
+    return re.sub(r"\s*\([^)]*\)", "", label).strip()
+
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
     normalized_contractor_pdf = normalize_string(contractor_name_pdf)
     for label, field in fields_to_check.items():
         value = csv_data.get(field, "")
+        display_label = clean_label(label)
         if not value:
             status = "⚠️ Missing in CSV"
+            expected = ""
         else:
             if label == "Module Quantity":
-                status = "✅" if normalize_quantity(value) == module_qty_pdf else "❌"
+                expected = module_qty_pdf
+                status = "✅" if normalize_quantity(value) == module_qty_pdf else f"❌ (Expected: {expected})"
             elif label == "Inverter Quantity":
-                status = "✅" if normalize_quantity(value) == inverter_qty_pdf else "❌"
+                expected = inverter_qty_pdf
+                status = "✅" if normalize_quantity(value) == inverter_qty_pdf else f"❌ (Expected: {expected})"
             elif label == "Contractor Name":
                 normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_contractor_pdf else "❌"
+                expected = contractor_name_pdf
+                status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (Expected: {expected})"
             elif label == "AHJ":
                 normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_pdf_text else "❌"
+                expected = value
+                status = "✅" if normalized_value in normalized_pdf_text else f"❌ (Expected: {expected})"
             elif is_numeric(value):
+                expected = value
                 found = str(value) in pdf_text
-                status = "✅" if found else "❌"
+                status = "✅" if found else f"❌ (Expected: {expected})"
             else:
                 normalized_value = normalize_string(value)
+                expected = value
                 found = normalized_value in normalized_pdf_text
-                status = "✅" if found else "❌"
-        results.append((label, field, value, status))
+                status = "✅" if found else f"❌ (Expected: {expected})"
+        results.append((display_label, field, value, status))
     return results
 
 if csv_file and pdf_file:
@@ -154,9 +165,9 @@ if csv_file and pdf_file:
         st.subheader("📋 Comparison Results")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
-        match_count = sum(1 for _, _, _, status in comparison if status == "✅")
-        mismatch_count = sum(1 for _, _, _, status in comparison if status == "❌")
-        missing_count = sum(1 for _, _, _, status in comparison if status == "⚠️ Missing in CSV")
+        match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
+        mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
+        missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
 
         total_fields = len(comparison)
         st.markdown(f"**Summary:** {total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
@@ -165,7 +176,7 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            st.write(f"**{label}** ({field}): `{value}` → {status}")
+            st.write(f"**{label}**: `{value}` → {status}")
             output.write(f"{label},{field},{value},{status}\n")
 
         st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
