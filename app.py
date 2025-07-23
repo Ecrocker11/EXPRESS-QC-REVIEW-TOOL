@@ -95,10 +95,20 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
         else:
             if label == "Module Quantity":
                 pdf_value = module_qty_pdf
-                status = "✅" if str(value) == str(module_qty_pdf) else f"❌ (PDF: {pdf_value})"
+                try:
+                    csv_val_int = int(str(value).lstrip("0")) if str(value).isdigit() else value
+                    pdf_val_int = int(str(pdf_value).lstrip("0")) if str(pdf_value).isdigit() else pdf_value
+                    status = "✅" if csv_val_int == pdf_val_int else f"❌ (PDF: {pdf_value})"
+                except:
+                    status = f"❌ (PDF: {pdf_value})"
             elif label == "Inverter Quantity":
                 pdf_value = inverter_qty_pdf
-                status = "✅" if str(value) == str(inverter_qty_pdf) else f"❌ (PDF: {pdf_value})"
+                try:
+                    csv_val_int = int(str(value).lstrip("0")) if str(value).isdigit() else value
+                    pdf_val_int = int(str(pdf_value).lstrip("0")) if str(pdf_value).isdigit() else pdf_value
+                    status = "✅" if csv_val_int == pdf_val_int else f"❌ (PDF: {pdf_value})"
+                except:
+                    status = f"❌ (PDF: {pdf_value})"
             elif label == "Contractor Name":
                 pdf_value = contractor_name_pdf
                 normalized_value = normalize_string(value)
