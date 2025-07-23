@@ -27,27 +27,27 @@ def normalize_quantity(value):
         return str(value)
 
 def extract_pdf_line_values(doc, contractor_name_csv):
-    first_page_text = doc[0].get_text()
-    lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
     contractor_name = ""
 
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
-    for i, line in enumerate(lines):
-        if 'module:' in line.lower() and i + 1 < len(lines):
-            match = re.search(r'\((\d+)\)', lines[i + 1])
-            if match:
-                module_qty = normalize_quantity(match.group(1))
+    for page in doc:
+        lines = page.get_text().splitlines()
+        for i, line in enumerate(lines):
+            if 'module:' in line.lower() and i + 1 < len(lines):
+                match = re.search(r'\((\d+)\)', lines[i + 1])
+                if match:
+                    module_qty = normalize_quantity(match.group(1))
 
-        if 'inverter:' in line.lower() and i + 1 < len(lines):
-            match = re.search(r'\((\d+)\)', lines[i + 1])
-            if match:
-                inverter_qty = normalize_quantity(match.group(1))
+            if 'inverter:' in line.lower() and i + 1 < len(lines):
+                match = re.search(r'\((\d+)\)', lines[i + 1])
+                if match:
+                    inverter_qty = normalize_quantity(match.group(1))
 
-        if normalize_string(line) == normalized_contractor_csv:
-            contractor_name = line.strip()
+            if normalize_string(line) == normalized_contractor_csv:
+                contractor_name = line.strip()
 
     return module_qty, inverter_qty, contractor_name
 
@@ -154,9 +154,12 @@ if csv_file and pdf_file:
         st.subheader("📋 Comparison Results")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
-        match_count = 0
-        mismatch_count = 0
-        missing_count = 0
+        match_count = sum(1 for _, _, _, status in comparison if status == "✅")
+        mismatch_count = sum(1 for _, _, _, status in comparison if status == "❌")
+        missing_count = sum(1 for _, _, _, status in comparison if status == "⚠️ Missing in CSV")
+
+        total_fields = len(comparison)
+        st.markdown(f"**Summary:** {total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
 
         output = io.StringIO()
         output.write("Label,Field,Value,Status\n")
@@ -164,12 +167,6 @@ if csv_file and pdf_file:
         for label, field, value, status in comparison:
             st.write(f"**{label}** ({field}): `{value}` → {status}")
             output.write(f"{label},{field},{value},{status}\n")
-            if status == "✅":
-                match_count += 1
-            elif status == "❌":
-                mismatch_count += 1
-            elif status == "⚠️ Missing in CSV":
-                missing_count += 1
 
         st.download_button("Download Results", output.getvalue(), "comparison_results.csv", "text/csv")
 
