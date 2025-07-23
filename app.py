@@ -187,7 +187,9 @@ if csv_file and pdf_file:
             else:
                 st.write(f"**{label}**: `{value}` → {status}")
 
-        st.subheader("📊 SUMMARY")      
+        st.subheader("📊 SUMMARY")    
+        total_fields = len(comparison)
+        st.markdown(f"**Summary:** {total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
