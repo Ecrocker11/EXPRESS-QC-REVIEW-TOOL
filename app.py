@@ -30,16 +30,19 @@ def extract_pdf_line_values(doc, contractor_name_csv):
     normalized_contractor_csv = normalize_string(contractor_name_csv)
 
     for i, line in enumerate(lines):
+        # Look for module quantity
         if 'module:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
 
+        # Look for inverter quantity
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
 
+        # Match contractor name by substring
         if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
@@ -95,20 +98,10 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
         else:
             if label == "Module Quantity":
                 pdf_value = module_qty_pdf
-                try:
-                    csv_val_int = int(str(value).lstrip("0")) if str(value).isdigit() else value
-                    pdf_val_int = int(str(pdf_value).lstrip("0")) if str(pdf_value).isdigit() else pdf_value
-                    status = "✅" if csv_val_int == pdf_val_int else f"❌ (PDF: {pdf_value})"
-                except:
-                    status = f"❌ (PDF: {pdf_value})"
+                status = "✅" if str(value) == str(module_qty_pdf) else f"❌ (PDF: {pdf_value})"
             elif label == "Inverter Quantity":
                 pdf_value = inverter_qty_pdf
-                try:
-                    csv_val_int = int(str(value).lstrip("0")) if str(value).isdigit() else value
-                    pdf_val_int = int(str(pdf_value).lstrip("0")) if str(pdf_value).isdigit() else pdf_value
-                    status = "✅" if csv_val_int == pdf_val_int else f"❌ (PDF: {pdf_value})"
-                except:
-                    status = f"❌ (PDF: {pdf_value})"
+                status = "✅" if str(value) == str(inverter_qty_pdf) else f"❌ (PDF: {pdf_value})"
             elif label == "Contractor Name":
                 pdf_value = contractor_name_pdf
                 normalized_value = normalize_string(value)
@@ -171,18 +164,14 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
-            output.write(f"{label},{field},{value},{status}\n")
+            st.write(f"**{label}**: `{value}` → {status}")
+            output.write(f"{label},{value},{status}\n")
             if status.startswith("✅"):
                 match_count += 1
             elif status.startswith("❌"):
                 mismatch_count += 1
             elif status.startswith("⚠️"):
                 missing_count += 1
-
-            if status.startswith("❌"):
-                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            else:
-                st.write(f"**{label}**: `{value}` → {status}")
 
         st.subheader("📊 SUMMARY")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
@@ -196,6 +185,6 @@ if csv_file and pdf_file:
 
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
-
+    
     except Exception as e:
         st.error(f"Error processing files: {e}")
