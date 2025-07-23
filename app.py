@@ -5,7 +5,7 @@ import re
 import io
 import matplotlib.pyplot as plt
 
-st.title("🔍 EXPRESS QC REVIEW222 TOOL")
+st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
