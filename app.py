@@ -187,7 +187,7 @@ if csv_file and pdf_file:
         st.subheader("📊 SUMMARY")    
         
         total_fields = len(comparison)
-        st.markdown(f"**Summary:** {total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
+        st.markdown(f"{total_fields} fields checked — ✅ {match_count} matched, ❌ {mismatch_count} unmatched, ⚠️ {missing_count} missing in CSV")
         
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
