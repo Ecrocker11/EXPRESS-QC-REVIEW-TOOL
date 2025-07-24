@@ -178,7 +178,7 @@ if csv_file and pdf_file:
             "Roofing Material": "Engineering_Project__c.Roofing_Material__c"
         }
 
-        st.subheader("Comparison Results")
+        st.subheader("COMPARISON RESULTS")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
@@ -188,13 +188,13 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         grouped_fields = {
-            "📌 Contractor Info": [
+            "📌 CONTRACTOR": [
                 "Contractor Name", "Contractor Address", "Contractor License Number", "Contractor Phone Number"
             ],
-            "📌 Project Info": [
+            "📌 PROPERTY": [
                 "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
             ],
-            "📌 Equipment Info": [
+            "📌 EQUIPMENT": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
                 "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity"
             ]
@@ -211,7 +211,7 @@ if csv_file and pdf_file:
                         else:
                             st.markdown(f"<strong>{comp_label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
 
-        st.subheader("📊 SUMMARY")
+        st.subheader("SUMMARY")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
