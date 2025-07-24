@@ -190,9 +190,6 @@ if csv_file and pdf_file:
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
-        st.subheader("📥 Download Comparison CSV")
-        st.download_button("Download Comparison CSV", output.getvalue(), "comparison_results.csv", "text/csv")
-
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
