@@ -1,9 +1,11 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
 import re
 import io
 import matplotlib.pyplot as plt
+import traceback
 
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
@@ -12,7 +14,12 @@ pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
-    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
+    return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
+
+def normalize_dimension(value):
+    value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
+    value = re.sub(r'[^0-9x]', '', value)
+    return value
 
 def extract_pdf_text(doc):
     pdf_text = ""
@@ -116,6 +123,10 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
             elif label == "AHJ":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_pdf_text else f"❌ (PDF: Not Found)"
+            elif label in ["Rafter/Truss Size", "Rafter/Truss Spacing"]:
+                normalized_value = normalize_dimension(value)
+                found = normalized_value in normalize_dimension(pdf_text)
+                status = "✅" if found else f"❌ (PDF: Not Found)"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -157,33 +168,50 @@ if csv_file and pdf_file:
             "Module Quantity": "Engineering_Project__c.Module_Quantity__c",
             "Inverter Manufacturer": "Engineering_Project__c.Inverter_Manufacturer__c",
             "Inverter Part Number": "Engineering_Project__c.Inverter_Part_Number__c",
-            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
+            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c",
+            "IBC": "Engineering_Project__c.AHJ_Database__r.IBC__c",
+            "IFC": "Engineering_Project__c.AHJ_Database__r.IFC__c",
+            "IRC": "Engineering_Project__c.AHJ_Database__r.IRC__c",
+            "NEC": "Engineering_Project__c.AHJ_Database__r.NEC__c",
+            "Rafter/Truss Size": "Engineering_Project__c.Rafter_Truss_Size__c",
+            "Rafter/Truss Spacing": "Engineering_Project__c.Rafter_Truss_Spacing__c",
+            "Roofing Material": "Engineering_Project__c.Roofing_Material__c"
         }
 
-        st.subheader("📋 Comparison Results")
+        st.subheader("COMPARISON RESULTS")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
-       
+
         output = io.StringIO()
         output.write("Label,Field,Value,Status\n")
 
-        for label, field, value, status in comparison:
-            output.write(f"{label},{field},{value},{status}\n")
-            if status.startswith("✅"):
-                match_count += 1
-            elif status.startswith("❌"):
-                mismatch_count += 1
-            elif status.startswith("⚠️"):
-                missing_count += 1
+        grouped_fields = {
+            "📌 CONTRACTOR": [
+                "Contractor Name", "Contractor Address", "Contractor License Number", "Contractor Phone Number"
+            ],
+            "📌 PROPERTY": [
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
+            ],
+            "📌 EQUIPMENT": [
+                "Module Manufacturer", "Module Part Number", "Module Quantity",
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity"
+            ]
+        }
 
-            if status.startswith("❌"):
-                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            else:
-                st.write(f"**{label}**: `{value}` → {status}")
+        for group, labels in grouped_fields.items():
+            st.markdown(f"<p style='font-size:22px; font-weight:bold; margin-top:20px;'>{group}</p>", unsafe_allow_html=True)
+            for label in labels:
+                for comp_label, field, value, status in comparison:
+                    if comp_label == label:
+                        output.write(f"{comp_label},{field},{value},{status}\n")
+                        if status.startswith("❌"):
+                            st.markdown(f"<span style='color:red'><strong>{comp_label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<strong>{comp_label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
 
-        st.subheader("📊 SUMMARY")    
+        st.subheader("SUMMARY")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
@@ -193,8 +221,8 @@ if csv_file and pdf_file:
         ax.axis('equal')
         st.pyplot(fig)
 
-        st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
+        st.text(traceback.format_exc())
