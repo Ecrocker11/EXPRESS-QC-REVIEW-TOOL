@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -147,8 +146,7 @@ if csv_file and pdf_file:
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
             module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
-            pdf_text = extract_pdf_text(doc)
-            combined_pdf_text = pdf_text + "\n" + third_page_text
+            pdf_text = extract_pdf_text(doc[:1]) + third_page_text
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -195,7 +193,7 @@ if csv_file and pdf_file:
             })
 
         st.subheader("COMPARISON RESULTS")
-        comparison = compare_fields(csv_data, combined_pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
+        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
@@ -212,10 +210,10 @@ if csv_file and pdf_file:
             ],
             "📌 EQUIPMENT": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
-                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity"
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model"
             ],
-            "📌 EXISTING SYSTEM": [
-                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model",
+            "📌 ENERGY STORAGE": [
                 "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
                 "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
             ]
@@ -242,7 +240,7 @@ if csv_file and pdf_file:
         ax.axis('equal')
         st.pyplot(fig)
 
-        st.download_button("Download PDF Text", combined_pdf_text, "pdf_text.txt", "text/plain")
+        st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
