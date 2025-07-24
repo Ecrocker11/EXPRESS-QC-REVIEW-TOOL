@@ -213,8 +213,6 @@ if csv_file and pdf_file:
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
                 "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
                 "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model"
-            ],
-            "📌 ENERGY STORAGE": [
                 "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
                 "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
             ]
