@@ -13,8 +13,8 @@ csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
-    s = re.sub(r'<[^>]+>', '', str(s))
-    return re.sub(r'[\s.,"]', '', s).lower()
+    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
+    return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
 
 def normalize_dimension(value):
     value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
@@ -42,10 +42,12 @@ def extract_pdf_line_values(doc, contractor_name_csv):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
+
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
+
         if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
@@ -143,10 +145,10 @@ if csv_file and pdf_file:
 
         pdf_bytes = pdf_file.read()
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-            pdf_text_all = extract_pdf_text(doc)
             contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
             module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
-            pdf_text_all += third_page_text
+            pdf_text = extract_pdf_text(doc)
+            combined_pdf_text = pdf_text + "\n" + third_page_text
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -193,7 +195,7 @@ if csv_file and pdf_file:
             })
 
         st.subheader("COMPARISON RESULTS")
-        comparison = compare_fields(csv_data, pdf_text_all, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
+        comparison = compare_fields(csv_data, combined_pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
@@ -206,13 +208,14 @@ if csv_file and pdf_file:
                 "Contractor Name", "Contractor Address", "Contractor License Number", "Contractor Phone Number"
             ],
             "📌 PROPERTY": [
-                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material",
-                "Rafter/Truss Size", "Rafter/Truss Spacing"
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material", "Rafter/Truss Size", "Rafter/Truss Spacing"
             ],
             "📌 EQUIPMENT": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
-                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
-                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model"
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity"
+            ],
+            "📌 EXISTING SYSTEM": [
+                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model",
                 "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
                 "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
             ]
@@ -239,7 +242,7 @@ if csv_file and pdf_file:
         ax.axis('equal')
         st.pyplot(fig)
 
-        st.download_button("Download PDF Text", pdf_text_all, "pdf_text.txt", "text/plain")
+        st.download_button("Download PDF Text", combined_pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
