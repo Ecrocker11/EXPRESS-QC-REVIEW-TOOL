@@ -13,8 +13,8 @@ csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
-    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
-    return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
+    s = re.sub(r'<[^>]+>', '', str(s))
+    return re.sub(r'[\s.,"]', '', s).lower()
 
 def normalize_dimension(value):
     value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
@@ -29,6 +29,7 @@ def extract_pdf_text(doc):
 
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
+    third_page_text = doc[2].get_text() if len(doc) >= 3 else ""
     lines = first_page_text.splitlines()
     module_qty = None
     inverter_qty = None
@@ -41,16 +42,14 @@ def extract_pdf_line_values(doc, contractor_name_csv):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 module_qty = match.group(1)
-
         if 'inverter:' in line.lower() and i + 1 < len(lines):
             match = re.search(r'\((\d+)\)', lines[i + 1])
             if match:
                 inverter_qty = match.group(1)
-
         if normalized_contractor_csv in normalize_string(line):
             contractor_name = line.strip()
 
-    return module_qty, inverter_qty, contractor_name
+    return module_qty, inverter_qty, contractor_name, third_page_text
 
 def extract_csv_fields(df):
     df.columns = df.columns.str.strip()
@@ -144,9 +143,10 @@ if csv_file and pdf_file:
 
         pdf_bytes = pdf_file.read()
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-            pdf_text = extract_pdf_text(doc)
+            pdf_text_all = extract_pdf_text(doc)
             contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
-            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf = extract_pdf_line_values(doc, contractor_name_csv)
+            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
+            pdf_text_all += third_page_text
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -175,11 +175,25 @@ if csv_file and pdf_file:
             "NEC": "Engineering_Project__c.AHJ_Database__r.NEC__c",
             "Rafter/Truss Size": "Engineering_Project__c.Rafter_Truss_Size__c",
             "Rafter/Truss Spacing": "Engineering_Project__c.Rafter_Truss_Spacing__c",
-            "Roofing Material": "Engineering_Project__c.Roofing_Material__c"
+            "Roofing Material": "Engineering_Project__c.Roofing_Material__c",
+            "Racking Manufacturer": "Engineering_Project__c.Racking_Manufacturer__c",
+            "Racking Model": "Engineering_Project__c.Racking_Model__c",
+            "Attachment Manufacturer": "Engineering_Project__c.Attachment_Manufacturer__c",
+            "Attachment Model": "Engineering_Project__c.Attachment_Model__c"
         }
 
+        if csv_data.get("Engineering_Project__c.Energy_Storage_Picklist__c", "").lower() == "yes":
+            fields_to_check.update({
+                "ESS Battery Manufacturer": "Engineering_Project__c.ESS_Battery_Manufacturer__c",
+                "ESS Battery Model": "Engineering_Project__c.ESS_Battery_Model__c",
+                "ESS Battery Quantity": "Engineering_Project__c.ESS_Battery_Quantity__c",
+                "ESS Inverter Manufacturer": "Engineering_Project__c.ESS_Inverter_Manufacturer__c",
+                "ESS Inverter Model": "Engineering_Project__c.ESS_Inverter_Model__c",
+                "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
+            })
+
         st.subheader("COMPARISON RESULTS")
-        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
+        comparison = compare_fields(csv_data, pdf_text_all, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
@@ -192,11 +206,17 @@ if csv_file and pdf_file:
                 "Contractor Name", "Contractor Address", "Contractor License Number", "Contractor Phone Number"
             ],
             "📌 PROPERTY": [
-                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material",
+                "Rafter/Truss Size", "Rafter/Truss Spacing"
             ],
             "📌 EQUIPMENT": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
-                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity"
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model"
+            ],
+            "📌 ENERGY STORAGE": [
+                "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
+                "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
             ]
         }
 
@@ -221,7 +241,7 @@ if csv_file and pdf_file:
         ax.axis('equal')
         st.pyplot(fig)
 
-        st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
+        st.download_button("Download PDF Text", pdf_text_all, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
