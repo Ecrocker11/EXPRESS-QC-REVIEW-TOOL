@@ -188,10 +188,10 @@ if csv_file and pdf_file:
 
         grouped_fields = {
             "Contractor Info": [
-                "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
+                "Contractor Name", "Contractor Address", "Contractor License Number", "Contractor Phone Number"
             ],
             "Project Info": [
-                "Property Owner", "Project Address", "AHJ", "Utility", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
             ],
             "Equipment Info": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
