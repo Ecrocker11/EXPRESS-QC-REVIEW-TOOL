@@ -130,9 +130,11 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
-            else:
+            elif label == "Roofing Material":
                 normalized_value = normalize_string(value)
-                found = normalized_value in normalized_pdf_text
+                # Allow partial match for roofing materials
+                value_parts = normalized_value.split('/')
+                found = any(part in normalized_pdf_text for part in value_parts)
                 status = "✅" if found else f"❌ (PDF: Not Found)"
         results.append((label, field, value, status))
     return results
