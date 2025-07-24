@@ -187,16 +187,15 @@ if csv_file and pdf_file:
         output.write("Label,Field,Value,Status\n")
 
         grouped_fields = {
-            "📌 Contractor Info": [
+            "Contractor Info": [
                 "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
             ],
-            "📌 Project Info": [
-                "Property Owner", "Project Address", "AHJ", "Utility", "IBC", "IFC", "IRC", "NEC", "Roofing Material"
+            "Project Info": [
+                "Property Owner", "Project Address", "AHJ", "Utility", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
             ],
-            "📌 Equipment Info": [
+            "Equipment Info": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
-                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
-                "Rafter/Truss Size", "Rafter/Truss Spacing"
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity"
             ]
         }
 
