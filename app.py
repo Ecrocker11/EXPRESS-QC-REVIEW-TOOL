@@ -201,7 +201,7 @@ if csv_file and pdf_file:
         }
 
         for group, labels in grouped_fields.items():
-            st.markdown(f"<p style='font-size:16px; font-weight:bold; margin-top:20px;'>{group}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:20px; font-weight:bold; margin-top:20px;'>{group}</p>", unsafe_allow_html=True)
             for label in labels:
                 for comp_label, field, value, status in comparison:
                     if comp_label == label:
