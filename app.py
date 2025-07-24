@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -130,11 +129,9 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
-            elif label == "Roofing Material":
+            else:
                 normalized_value = normalize_string(value)
-                # Allow partial match for roofing materials
-                value_parts = normalized_value.split('/')
-                found = any(part in normalized_pdf_text for part in value_parts)
+                found = normalized_value in normalized_pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
         results.append((label, field, value, status))
     return results
@@ -156,35 +153,28 @@ if csv_file and pdf_file:
         compiled_customer_address = compile_customer_address(csv_data)
         csv_data["Compiled_Customer_Address"] = compiled_customer_address
 
-    st.subheader("Contractor Info")
         fields_to_check = {
             "Contractor Name": "Engineering_Project__c.Customer__r.Name",
             "Contractor Address": "Compiled_Customer_Address",
             "Contractor Phone Number": "Engineering_Project__c.Customer__r.Phone",
             "Contractor License Number": "Engineering_Project__c.Account_License_as_Text__c",
-        }
-    st.subheader("Property Info")
-        fields_to_check = {
             "Property Owner": "Engineering_Project__c.Property_Owner_Name__c",
             "Project Address": "Compiled_Project_Address",
-            "Rafter/Truss Size": "Engineering_Project__c.Rafter_Truss_Size__c",
-            "Rafter/Truss Spacing": "Engineering_Project__c.Rafter_Truss_Spacing__c",
-            "Roofing Material": "Engineering_Project__c.Roofing_Material__c",
-            "Utility": "Engineering_Project__c.Utility__c",
             "AHJ": "Engineering_Project__c.AHJ__c",
-            "IBC": "Engineering_Project__c.AHJ_Database__r.IBC__c",
-            "IFC": "Engineering_Project__c.AHJ_Database__r.IFC__c",
-            "IRC": "Engineering_Project__c.AHJ_Database__r.IRC__c",
-            "NEC": "Engineering_Project__c.AHJ_Database__r.NEC__c",
-        }
-    st.subheader("Equipment Info")
-        fields_to_check = {
+            "Utility": "Engineering_Project__c.Utility__c",
             "Module Manufacturer": "Engineering_Project__c.Module_Manufacturer__c",
             "Module Part Number": "Engineering_Project__c.Module_Part_Number__c",
             "Module Quantity": "Engineering_Project__c.Module_Quantity__c",
             "Inverter Manufacturer": "Engineering_Project__c.Inverter_Manufacturer__c",
             "Inverter Part Number": "Engineering_Project__c.Inverter_Part_Number__c",
-            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
+            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c",
+            "IBC": "Engineering_Project__c.AHJ_Database__r.IBC__c",
+            "IFC": "Engineering_Project__c.AHJ_Database__r.IFC__c",
+            "IRC": "Engineering_Project__c.AHJ_Database__r.IRC__c",
+            "NEC": "Engineering_Project__c.AHJ_Database__r.NEC__c",
+            "Rafter/Truss Size": "Engineering_Project__c.Rafter_Truss_Size__c",
+            "Rafter/Truss Spacing": "Engineering_Project__c.Rafter_Truss_Spacing__c",
+            "Roofing Material": "Engineering_Project__c.Roofing_Material__c"
         }
 
         st.subheader("📋 Comparison Results")
@@ -196,12 +186,31 @@ if csv_file and pdf_file:
         output = io.StringIO()
         output.write("Label,Field,Value,Status\n")
 
-        for label, field, value, status in comparison:
-            output.write(f"{label},{field},{value},{status}\n")
-            if status.startswith("❌"):
-                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            else:
-                st.write(f"**{label}**: `{value}` → {status}")
+        grouped_fields = {
+            "📌 Contractor Info": [
+                "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
+            ],
+            "📌 Project Info": [
+                "Property Owner", "Project Address", "AHJ", "Utility", "IBC", "IFC", "IRC", "NEC", "Roofing Material"
+            ],
+            "📌 Equipment Info": [
+                "Module Manufacturer", "Module Part Number", "Module Quantity",
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "Rafter/Truss Size", "Rafter/Truss Spacing"
+            ]
+        }
+
+        for group, labels in grouped_fields.items():
+            st.markdown(f"### {group}")
+            for label in labels:
+                for comp in comparison:
+                    if comp[0] == label:
+                        _, field, value, status = comp
+                        output.write(f"{label},{field},{value},{status}\n")
+                        if status.startswith("❌"):
+                            st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                        else:
+                            st.write(f"**{label}**: `{value}` → {status}")
 
         st.subheader("📊 SUMMARY")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
