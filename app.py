@@ -4,6 +4,7 @@ import fitz  # PyMuPDF
 import re
 import io
 import matplotlib.pyplot as plt
+import traceback
 
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
@@ -165,25 +166,18 @@ if csv_file and pdf_file:
         match_count = sum(1 for _, _, _, status in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status in comparison if status.startswith("⚠️"))
-       
+
         output = io.StringIO()
         output.write("Label,Field,Value,Status\n")
 
         for label, field, value, status in comparison:
             output.write(f"{label},{field},{value},{status}\n")
-            if status.startswith("✅"):
-                match_count += 1
-            elif status.startswith("❌"):
-                mismatch_count += 1
-            elif status.startswith("⚠️"):
-                missing_count += 1
-
             if status.startswith("❌"):
                 st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
             else:
                 st.write(f"**{label}**: `{value}` → {status}")
 
-        st.subheader("📊 SUMMARY")    
+        st.subheader("📊 SUMMARY")
         labels = ['PASS', 'FAIL', 'EXPRESS QC REVIEW RESULTS']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
@@ -196,5 +190,9 @@ if csv_file and pdf_file:
         st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
+        st.subheader("📥 Download Comparison CSV")
+        st.download_button("Download Comparison CSV", output.getvalue(), "comparison_results.csv", "text/csv")
+
     except Exception as e:
         st.error(f"Error processing files: {e}")
+        st.text(traceback.format_exc())
