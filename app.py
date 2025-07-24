@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -158,7 +159,14 @@ if csv_file and pdf_file:
             "Module Quantity": "Engineering_Project__c.Module_Quantity__c",
             "Inverter Manufacturer": "Engineering_Project__c.Inverter_Manufacturer__c",
             "Inverter Part Number": "Engineering_Project__c.Inverter_Part_Number__c",
-            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c"
+            "Inverter Quantity": "Engineering_Project__c.Inverter_Quantity__c",
+            "IBC": "Engineering_Project__c.AHJ_Database__r.IBC__c",
+            "IFC": "Engineering_Project__c.AHJ_Database__r.IFC__c",
+            "IRC": "Engineering_Project__c.AHJ_Database__r.IRC__c",
+            "NEC": "Engineering_Project__c.AHJ_Database__r.NEC__c",
+            "Rafter/Truss Size": "Engineering_Project__c.Rafter_Truss_Size__c",
+            "Rafter/Truss Spacing": "Engineering_Project__c.Rafter_Truss_Spacing__c",
+            "Roofing Material": "Engineering_Project__c.Roofing_Material__c"
         }
 
         st.subheader("📋 Comparison Results")
