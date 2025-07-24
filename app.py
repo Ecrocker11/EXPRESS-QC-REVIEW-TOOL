@@ -221,7 +221,6 @@ if csv_file and pdf_file:
         ax.axis('equal')
         st.pyplot(fig)
 
-        st.subheader("📄 Download PDF Text")
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
