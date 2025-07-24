@@ -14,7 +14,12 @@ pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
-    return re.sub(r'[\s.,]', '', s).lower()  # Remove whitespace, punctuation, lowercase
+    return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
+
+def normalize_dimension(value):
+    value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
+    value = re.sub(r'[^0-9x]', '', value)
+    return value
 
 def extract_pdf_text(doc):
     pdf_text = ""
@@ -118,6 +123,10 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
             elif label == "AHJ":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_pdf_text else f"❌ (PDF: Not Found)"
+            elif label in ["Rafter/Truss Size", "Rafter/Truss Spacing"]:
+                normalized_value = normalize_dimension(value)
+                found = normalized_value in normalize_dimension(pdf_text)
+                status = "✅" if found else f"❌ (PDF: Not Found)"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
