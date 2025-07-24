@@ -1,6 +1,6 @@
 # 🔍 EXPRESS-QC-REVIEW-TOOL
 
-This Streamlit app allows users to upload a CSV file and a multi-page PDF, then automatically compares key project data between the two. It’s designed to help validate engineering project deliverables like solar plansets, BOMs, and permit packages.
+This Streamlit app allows users to upload a CSV file and a multi-page PDF, then automatically compares key project data between the two. It’s designed to help validate planset deliverable information (contractore & property details, equipment (modules & inverters)).
 
 ---
 
@@ -21,7 +21,7 @@ This Streamlit app allows users to upload a CSV file and a multi-page PDF, then 
 ## 📁 File Requirements
 
 - **CSV**: Must include two columns: `Field` and `Value`
-- **PDF**: Should contain the project planset or documentation to be validated
+- **PDF**: Should contain the project planset
 ---
 
 ## 🛠 How to Run Locally
