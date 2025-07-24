@@ -125,10 +125,6 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_value = normalize_string(value)
                 found = normalized_value in normalized_pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
-            elif label == "Rafter/Truss Size":
-                pdf_value = Rafter/Truss Size_name_pdf
-                normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_Rafter/Truss Size_pdf else f"❌ (PDF: {pdf_value})"
         results.append((label, field, value, status))
     return results
 
