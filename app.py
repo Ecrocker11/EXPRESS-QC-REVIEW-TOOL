@@ -40,14 +40,14 @@ def is_numeric(value) -> bool:
 # PDF EXTRACTION
 # ============================
 
-@st.cache_data
-def extract_pdf_text(doc) -> str:
-    return "".join(page.get_text() for page in doc)
+def extract_pdf_text(_doc) -> str:
+    """Extract text from all pages of a PyMuPDF document."""
+    return "".join(page.get_text() for page in _doc)
 
-def extract_pdf_line_values(doc, contractor_name_csv):
+def extract_pdf_line_values(_doc, contractor_name_csv):
     """Extract module/inverter quantity and contractor name from first page of PDF."""
-    first_page_text = doc[0].get_text()
-    third_page_text = doc[2].get_text() if len(doc) >= 3 else ""
+    first_page_text = _doc[0].get_text()
+    third_page_text = _doc[2].get_text() if len(_doc) >= 3 else ""
     lines = first_page_text.splitlines()
     module_qty = inverter_qty = None
     contractor_name = ""
@@ -88,8 +88,8 @@ def get_line_with_keyword(text, keyword):
 # ============================
 
 @st.cache_data
-def load_csv(file) -> pd.DataFrame:
-    return pd.read_csv(file)
+def load_csv(_file) -> pd.DataFrame:
+    return pd.read_csv(_file)
 
 def extract_csv_fields(df):
     df.columns = df.columns.str.strip()
@@ -183,15 +183,18 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
 
 if csv_file and pdf_file:
     try:
+        # Load CSV
         df = load_csv(csv_file)
         csv_data = extract_csv_fields(df)
 
+        # Process PDF
         pdf_bytes = io.BytesIO(pdf_file.read())
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
             module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
             pdf_text = extract_pdf_text(doc[:1]) + third_page_text
 
+        # Compile addresses
         csv_data["Compiled_Project_Address"] = compile_project_address(csv_data)
         csv_data["Compiled_Customer_Address"] = compile_customer_address(csv_data)
 
@@ -234,8 +237,10 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
+        # Compare fields
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
 
+        # Counts
         match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
