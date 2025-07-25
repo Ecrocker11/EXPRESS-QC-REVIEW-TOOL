@@ -10,16 +10,22 @@ st.title("🔍 EXPRESS QC REVIEW TOOL")
 # Custom CSS to improve text contrast on dark backgrounds
 st.markdown("""
     <style>
-        html, body, [class*="css"]  {
-            color: white !important;
+        html, body, .stApp {
+            background-color: var(--background-color) !important;
+            color: var(--text-color) !important;
         }
-        .stMarkdown p, .stMarkdown span, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, 
-        .stMarkdown h4, .stMarkdown h5, .stMarkdown h6, .stMarkdown div {
-            color: white !important;
+
+        /* Ensure headings, captions, and spans use dynamic text color */
+        h1, h2, h3, h4, h5, h6, p, span, div, .stMarkdown {
+            color: var(--text-color) !important;
+        }
+
+        /* Optional: Bold and color highlights */
+        .stMarkdown strong {
+            color: var(--text-color) !important;
         }
     </style>
 """, unsafe_allow_html=True)
-
 # ============================
 # FILE UPLOADS
 # ============================
