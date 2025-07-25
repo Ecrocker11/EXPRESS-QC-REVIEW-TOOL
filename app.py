@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -89,6 +90,13 @@ def is_numeric(value):
     except ValueError:
         return False
 
+def get_line_after_keyword(text, keyword):
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if keyword.lower() in line.lower() and i + 1 < len(lines):
+            return lines[i + 1].strip()
+    return ""
+
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
@@ -127,6 +135,21 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_value = normalize_dimension(value)
                 found = normalized_value in normalize_dimension(pdf_text)
                 status = "✅" if found else f"❌ (PDF: Not Found)"
+            elif label == "Racking Manufacturer":
+                pdf_value = get_line_after_keyword(pdf_text, "type of racking")
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+            elif label == "Racking Model":
+                pdf_value = get_line_after_keyword(pdf_text, "type of racking")
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+            elif label in ["Attachment Manufacturer", "Attachment Model"]:
+                pdf_value = get_line_after_keyword(pdf_text, "type of attachment")
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
