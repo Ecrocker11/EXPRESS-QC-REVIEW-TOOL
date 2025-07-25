@@ -239,23 +239,18 @@ if csv_file and pdf_file:
         missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
 
         field_categories = {
-            "Contractor Info": [
+            "CONTRACTOR DETAILS": [
                 "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
             ],
-            "Project Info": [
-                "Property Owner", "Project Address", "AHJ", "Utility"
+            "PROPERTY": [
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Rafter/Truss Size", "Rafter/Truss Spacing", "Roofing Material"
             ],
-            "Equipment Info": [
+            "EQUIPMENT": [
                 "Module Manufacturer", "Module Part Number", "Module Quantity",
                 "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model",
                 "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
                 "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
-            ],
-            "Code Compliance": [
-                "IBC", "IFC", "IRC", "NEC",
-                "Rafter/Truss Size", "Rafter/Truss Spacing", "Roofing Material",
-                "Racking Manufacturer", "Racking Model",
-                "Attachment Manufacturer", "Attachment Model"
             ]
         }
 
