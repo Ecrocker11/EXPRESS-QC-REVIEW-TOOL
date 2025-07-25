@@ -265,7 +265,7 @@ if csv_file and pdf_file:
                         st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
                     st.caption(explanation)
 
-        st.subheader("SUMMARY")
+        st.markdown("<h2 style='font-size:28px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
