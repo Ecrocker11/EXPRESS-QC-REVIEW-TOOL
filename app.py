@@ -233,18 +233,42 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
-        st.subheader("COMPARISON RESULTS")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
 
-        for label, field, value, status, explanation in comparison:
-            if status.startswith("❌"):
-                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
-            st.caption(explanation)
+        field_categories = {
+            "Contractor Info": [
+                "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
+            ],
+            "Project Info": [
+                "Property Owner", "Project Address", "AHJ", "Utility"
+            ],
+            "Equipment Info": [
+                "Module Manufacturer", "Module Part Number", "Module Quantity",
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
+                "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
+            ],
+            "Code Compliance": [
+                "IBC", "IFC", "IRC", "NEC",
+                "Rafter/Truss Size", "Rafter/Truss Spacing", "Roofing Material",
+                "Racking Manufacturer", "Racking Model",
+                "Attachment Manufacturer", "Attachment Model"
+            ]
+        }
+
+        st.subheader("COMPARISON RESULTS")
+        for category, fields in field_categories.items():
+            st.markdown(f"### {category}")
+            for label, field, value, status, explanation in comparison:
+                if label in fields:
+                    if status.startswith("❌"):
+                        st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
+                    st.caption(explanation)
 
         st.subheader("SUMMARY")
         labels = ['PASS', 'FAIL', 'MISSING']
