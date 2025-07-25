@@ -233,20 +233,39 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
-        st.subheader("COMPARISON RESULTS")
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
 
-        for label, field, value, status, explanation in comparison:
-            if status.startswith("❌"):
-                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
-            st.caption(explanation)
+        field_categories = {
+            "CONTRACTOR DETAILS": [
+                "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
+            ],
+            "PROPERTY": [
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Rafter/Truss Size", "Rafter/Truss Spacing", "Roofing Material"
+            ],
+            "EQUIPMENT": [
+                "Module Manufacturer", "Module Part Number", "Module Quantity",
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model",
+                "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
+                "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
+            ]
+        }
 
-        st.subheader("SUMMARY")
+        st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
+        for category, fields in field_categories.items():
+            st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
+            for label, field, value, status, explanation in comparison:
+                if label in fields:
+                    if status.startswith("❌"):
+                        st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
+                    st.caption(explanation)
+
+        st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
