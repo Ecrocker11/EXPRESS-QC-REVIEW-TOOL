@@ -12,8 +12,8 @@ csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
 def normalize_string(s):
-    s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
-    return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
+    s = re.sub(r'<[^>]+>', '', str(s))
+    return re.sub(r'[\s.,"]', '', s).lower()
 
 def normalize_dimension(value):
     value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
@@ -180,6 +180,23 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
         results.append((label, field, value, status, explanation))
     return results
 
+def annotate_pdf_with_mismatches(pdf_bytes, mismatches):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    for page in doc:
+        for label, field, value, status, explanation in mismatches:
+            if status.startswith("❌"):
+                search_terms = [value]
+                for term in search_terms:
+                    rects = page.search_for(term)
+                    for rect in rects:
+                        highlight = page.add_highlight_annot(rect)
+                        highlight.set_info(info={"title": "Mismatch", "content": explanation})
+    output = io.BytesIO()
+    doc.save(output)
+    doc.close()
+    output.seek(0)
+    return output
+
 if csv_file and pdf_file:
     try:
         df = pd.read_csv(csv_file)
@@ -278,6 +295,9 @@ if csv_file and pdf_file:
         st.pyplot(fig)
 
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
+
+        annotated_pdf = annotate_pdf_with_mismatches(pdf_bytes, comparison)
+        st.download_button("Download Marked-Up PDF", annotated_pdf, "marked_up_plan_set.pdf", "application/pdf")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
