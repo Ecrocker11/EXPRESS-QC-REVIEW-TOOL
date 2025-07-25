@@ -254,9 +254,9 @@ if csv_file and pdf_file:
             ]
         }
 
-        st.subheader("COMPARISON RESULTS")
+        st.markdown("<h2 style='font-size:28px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
         for category, fields in field_categories.items():
-            st.markdown(f"### {category}")
+            st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
             for label, field, value, status, explanation in comparison:
                 if label in fields:
                     if status.startswith("❌"):
