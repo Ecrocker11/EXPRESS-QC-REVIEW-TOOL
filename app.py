@@ -245,6 +245,29 @@ if csv_file and pdf_file:
             else:
                 st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
             st.caption(explanation)
+        grouped_fields = {
+            "📌 CONTRACTOR": [
+                "Contractor Name", "Contractor Address", "Contractor License Number", "Contractor Phone Number"
+            ],
+            "📌 PROPERTY": [
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Roofing Material","Rafter/Truss Size", "Rafter/Truss Spacing"
+            ],
+            "📌 EQUIPMENT": [
+                "Module Manufacturer", "Module Part Number", "Module Quantity",
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity", "ESS Battery Manufacturer","ESS Battery Model", "ESS Battery Quantity", "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
+            ]
+        }
+
+        for group, labels in grouped_fields.items():
+            st.markdown(f"<p style='font-size:22px; font-weight:bold; margin-top:20px;'>{group}</p>", unsafe_allow_html=True)
+            for label in labels:
+                for comp_label, field, value, status in comparison:
+                    if comp_label == label:
+                        output.write(f"{comp_label},{field},{value},{status}\n")
+                        if status.startswith("❌"):
+                            st.markdown(f"<span style='color:red'><strong>{comp_label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<strong>{comp_label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
 
         st.subheader("SUMMARY")
         labels = ['PASS', 'FAIL', 'MISSING']
