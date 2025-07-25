@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -142,7 +141,12 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_value = normalize_dimension(value)
                 found = normalized_value in normalize_dimension(pdf_text)
                 status = "✅" if found else f"❌ (PDF: Not Found)"
-            elif label == "Racking Manufacturer" or label == "Racking Model":
+            elif label == "Racking Manufacturer":
+                pdf_value = get_line_after_keyword(pdf_text, "type of racking")
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+            elif label == "Racking Model":
                 pdf_value = get_line_after_keyword(pdf_text, "type of racking")
                 normalized_value = normalize_string(value)
                 normalized_pdf_value = normalize_string(pdf_value)
@@ -154,12 +158,10 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
             elif label == "Roofing Material":
                 pdf_value = get_line_containing_keyword(pdf_text, "ROOF SURFACE TYPE:")
-                normalized_value = normalize_string(value)
                 normalized_pdf_value = normalize_string(pdf_value)
-                if normalized_value == "asphaltcompositeshingle":
-                    status = "✅" if "compositeshingle" in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
-                else:
-                    status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+                components = re.split(r'[\/|,]', value)
+                match_found = any(normalize_string(comp) in normalized_pdf_value for comp in components)
+                status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
