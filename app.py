@@ -180,20 +180,31 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
         results.append((label, field, value, status, explanation))
     return results
 
-def highlight_mismatches_in_pdf(doc, comparison):
-    highlight_color = (1, 0, 0)  # Red for mismatches
+def highlight_mismatches_in_pdf(doc, comparison, module_qty_pdf, inverter_qty_pdf):
+    highlight_color = (1, 0, 0)  # Red
 
     for label, field, value, status, explanation in comparison:
-        if status.startswith("❌") and value:
-            search_text = str(value).strip()
-            if not search_text:
+        if not status.startswith("❌") or not value:
+            continue  # Only highlight mismatches with a value
+
+        search_texts = []
+
+        # For quantity fields, highlight only the extracted PDF qty text
+        if label == "Module Quantity" and module_qty_pdf:
+            search_texts = [module_qty_pdf]
+        elif label == "Inverter Quantity" and inverter_qty_pdf:
+            search_texts = [inverter_qty_pdf]
+        else:
+            # For other fields, highlight CSV value as is
+            search_texts = [str(value).strip()]
+            if not search_texts[0]:
                 continue
 
-            found_something = False
+        found_something = False
+        for search_text in search_texts:
             for page in doc:
                 text_instances = page.search_for(search_text, quads=False)
                 if not text_instances:
-                    # Try lowercase
                     text_instances = page.search_for(search_text.lower(), quads=False)
                 if text_instances:
                     found_something = True
@@ -203,13 +214,13 @@ def highlight_mismatches_in_pdf(doc, comparison):
                         highlight.set_opacity(0.4)
                         highlight.update()
 
-            if not found_something:
-                first_page = doc[0]
-                text = f"Mismatch for {label}: '{search_text}' not found"
-                rect = fitz.Rect(50, first_page.rect.height - 50, 450, first_page.rect.height - 30)
-                annot = first_page.add_text_annot(rect.tl, text)
-                annot.set_colors(stroke=(1, 0, 0))
-                annot.update()
+        if not found_something:
+            first_page = doc[0]
+            text = f"Mismatch for {label}: '{search_texts[0]}' not found"
+            rect = fitz.Rect(50, first_page.rect.height - 50, 450, first_page.rect.height - 30)
+            annot = first_page.add_text_annot(rect.tl, text)
+            annot.set_colors(stroke=(1, 0, 0))
+            annot.update()
 
 if csv_file and pdf_file:
     try:
@@ -280,8 +291,8 @@ if csv_file and pdf_file:
             for page in doc:
                 marked_doc.insert_pdf(doc, from_page=page.number, to_page=page.number)
 
-            # Highlight mismatches
-            highlight_mismatches_in_pdf(marked_doc, comparison)
+            # Highlight mismatches (pass the extracted quantities)
+            highlight_mismatches_in_pdf(marked_doc, comparison, module_qty_pdf, inverter_qty_pdf)
 
             # Save marked-up PDF to memory buffer
             pdf_buffer = io.BytesIO()
