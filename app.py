@@ -263,6 +263,8 @@ if csv_file and pdf_file:
                 if label in fields:
                     if status.startswith("❌"):
                         st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    if status.startswith("⚠️"):
+                        st.markdown(f"<span style='color:yellow'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
                     else:
                         st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
                     st.caption(explanation)
