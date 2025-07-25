@@ -7,6 +7,14 @@ import matplotlib.pyplot as plt
 import traceback
 
 st.title("🔍 EXPRESS QC REVIEW TOOL")
+# Custom CSS to improve text contrast on dark backgrounds
+st.markdown("""
+    <style>
+        body, .stMarkdown, .css-10trblm, .css-1offfwp, .stText, .stCaption, div, p {
+            color: white !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # ============================
 # FILE UPLOADS
