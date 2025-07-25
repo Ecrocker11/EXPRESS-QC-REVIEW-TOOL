@@ -8,24 +8,26 @@ import traceback
 
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 # Custom CSS to improve text contrast on dark backgrounds
-st.markdown("""
+# Detect current Streamlit theme
+current_theme = st.get_option("theme.base")  # "light" or "dark"
+
+# Choose colors based on theme
+text_color = "black" if current_theme == "light" else "white"
+
+# Apply dynamic CSS
+st.markdown(f"""
     <style>
-        html, body, .stApp {
-            background-color: var(--background-color) !important;
-            color: var(--text-color) !important;
-        }
-
-        /* Ensure headings, captions, and spans use dynamic text color */
-        h1, h2, h3, h4, h5, h6, p, span, div, .stMarkdown {
-            color: var(--text-color) !important;
-        }
-
-        /* Optional: Bold and color highlights */
-        .stMarkdown strong {
-            color: var(--text-color) !important;
-        }
+        html, body, .stApp {{
+            color: {text_color} !important;
+        }}
+        h1, h2, h3, h4, h5, h6, p, span, div, .stMarkdown {{
+            color: {text_color} !important;
+        }}
     </style>
 """, unsafe_allow_html=True)
+
+st.title("🔍 EXPRESS QC REVIEW TOOL")
+st.write(f"Theme detected: {current_theme}")
 # ============================
 # FILE UPLOADS
 # ============================
