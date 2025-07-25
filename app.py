@@ -38,12 +38,14 @@ def extract_pdf_line_values(doc, contractor_name_csv):
 
     for i, line in enumerate(lines):
         if 'module:' in line.lower() and i + 1 < len(lines):
-            match = re.search(r'\((\d+)\)', lines[i + 1])
+            next_line = lines[i + 1]
+            match = re.search(r'\((\d+)\)', next_line)
             if match:
                 module_qty = match.group(1)
 
         if 'inverter:' in line.lower() and i + 1 < len(lines):
-            match = re.search(r'\((\d+)\)', lines[i + 1])
+            next_line = lines[i + 1]
+            match = re.search(r'\((\d+)\)', next_line)
             if match:
                 inverter_qty = match.group(1)
 
