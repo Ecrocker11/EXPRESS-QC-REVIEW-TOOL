@@ -6,7 +6,7 @@ import io
 import matplotlib.pyplot as plt
 import traceback
 
-st.set_page_config(page_title="EXPRESS QC REVIEW TOOL", layout="wide")
+st.set_page_config(page_title="EXPRESS QC REVIEW TOOL")
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 # ============================
