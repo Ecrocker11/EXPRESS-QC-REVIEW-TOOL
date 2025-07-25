@@ -181,10 +181,6 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
     return results
 
 def highlight_mismatches_in_pdf(doc, comparison):
-    """
-    Given a fitz.Document and the comparison results,
-    highlight the mismatches in the PDF pages.
-    """
     highlight_color = (1, 0, 0)  # Red for mismatches
 
     for label, field, value, status, explanation in comparison:
@@ -195,11 +191,10 @@ def highlight_mismatches_in_pdf(doc, comparison):
 
             found_something = False
             for page in doc:
-                # Search case-insensitive by normalizing both to lowercase
-                text_instances = page.search_for(search_text, quads=False, hit_max=10)
+                text_instances = page.search_for(search_text, quads=False)
                 if not text_instances:
-                    # Try lowercase search for better chances
-                    text_instances = page.search_for(search_text.lower(), quads=False, hit_max=10)
+                    # Try lowercase
+                    text_instances = page.search_for(search_text.lower(), quads=False)
                 if text_instances:
                     found_something = True
                     for inst in text_instances:
@@ -207,6 +202,7 @@ def highlight_mismatches_in_pdf(doc, comparison):
                         highlight.set_colors(stroke=highlight_color, fill=(1, 0.8, 0.8))
                         highlight.set_opacity(0.4)
                         highlight.update()
+
             if not found_something:
                 first_page = doc[0]
                 text = f"Mismatch for {label}: '{search_text}' not found"
