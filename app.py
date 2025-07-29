@@ -109,15 +109,50 @@ def get_line_with_keyword(text, keyword):
             return line.strip()
     return ""
 
+def apply_alias(value, alias_dict):
+    normalized_value = normalize_string(value)
+    return alias_dict.get(normalized_value, normalized_value)
+
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
     normalized_contractor_pdf = normalize_string(contractor_name_pdf)
+
+    racking_aliases = {
+        "chiko": "chiko",
+        "ejot": "ejot",
+        "iridg": "ironridge",
+        "k2": "k2",
+        "pegso": "pegasus",
+        "rftch": "rooftech",
+        "s5": "s-5!",
+        "snrac": "snapnrack",
+        "sunmo": "sunmodo",
+        "unirc": "unirac"
+    }
+
+    attachment_aliases = racking_aliases.copy()
+
+    inverter_aliases = {
+        "anker": "anker",
+        "aps": "aps",
+        "enp": "enphase",
+        "frons": "fronius",
+        "goodw": "goodwe",
+        "hoymi": "hoymiles",
+        "nep": "nep",
+        "solak": "sol-ark",
+        "soled": "solaredge",
+        "tesla": "tesla",
+        "tigo": "tigo"
+    }
+
     for label, field in fields_to_check.items():
         value = csv_data.get(field, "")
         pdf_value = ""
         status = ""
         explanation = ""
+
         if not value:
             status = "⚠️ Missing in CSV"
         else:
@@ -150,26 +185,41 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: Not Found)"
                 explanation = f"Looked for normalized phone '{value}' in PDF text"
             elif label == "AHJ":
+                pdf_value = get_line_with_keyword(pdf_text, "AHJ:")
+                pdf_value = pdf_value.split("AHJ:")[-1].strip()
                 normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_pdf_text else f"❌ (PDF: Not Found)"
-                explanation = f"Looked for '{value}' in PDF text"
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif label == "Utility":
+                pdf_value = get_line_with_keyword(pdf_text, "Utility:")
+                pdf_value = pdf_value.split("Utility:")[-1].strip()
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label in ["Rafter/Truss Size", "Rafter/Truss Spacing"]:
                 normalized_value = normalize_dimension(value)
                 found = normalized_value in normalize_dimension(pdf_text)
                 status = "✅" if found else f"❌ (PDF: Not Found)"
                 explanation = f"Looked for normalized '{value}' in PDF text"
-            elif label == "Racking Manufacturer" or label == "Racking Model":
+            elif label == "Racking Manufacturer":
                 pdf_value = get_line_after_keyword(pdf_text, "type of racking")
-                normalized_value = normalize_string(value)
+                normalized_value = apply_alias(value, racking_aliases)
                 normalized_pdf_value = normalize_string(pdf_value)
                 status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
-                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
-            elif label in ["Attachment Manufacturer", "Attachment Model"]:
+                explanation = f"Compared (with alias): CSV='{value}' → '{normalized_value}' vs PDF='{pdf_value}'"
+            elif label == "Attachment Manufacturer":
                 pdf_value = get_line_after_keyword(pdf_text, "type of attachment")
-                normalized_value = normalize_string(value)
+                normalized_value = apply_alias(value, attachment_aliases)
                 normalized_pdf_value = normalize_string(pdf_value)
                 status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
-                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+                explanation = f"Compared (with alias): CSV='{value}' → '{normalized_value}' vs PDF='{pdf_value}'"
+            elif label == "Inverter Manufacturer":
+                normalized_value = apply_alias(value, inverter_aliases)
+                found = normalized_value in normalized_pdf_text
+                status = "✅" if found else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for alias '{normalized_value}' in PDF text"
             elif label == "Roofing Material":
                 pdf_value = get_line_with_keyword(pdf_text, "roof surface type:")
                 normalized_pdf_value = normalize_string(pdf_value)
@@ -186,6 +236,7 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 found = normalized_value in normalized_pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
                 explanation = f"Looked for normalized value '{value}' in PDF text"
+
         results.append((label, field, value, status, explanation))
     return results
 
