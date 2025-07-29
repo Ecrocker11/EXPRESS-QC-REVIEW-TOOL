@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -14,6 +15,9 @@ pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
+
+def normalize_phone_number(phone):
+    return re.sub(r'[^0-9]', '', str(phone))
 
 def normalize_dimension(value):
     value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
@@ -140,6 +144,11 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif label == "Contractor Phone Number":
+                normalized_value = normalize_phone_number(value)
+                normalized_pdf_value = normalize_phone_number(pdf_text)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized phone '{value}' in PDF text"
             elif label == "AHJ":
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_pdf_text else f"❌ (PDF: Not Found)"
