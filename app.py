@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -14,6 +15,9 @@ pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
+
+def normalize_phone_number(phone):
+    return re.sub(r'[^0-9]', '', str(phone))
 
 def normalize_dimension(value):
     value = str(value).lower().replace('"', '').replace('”', '').replace('“', '').replace(' ', '')
@@ -105,6 +109,12 @@ def get_line_with_keyword(text, keyword):
             return line.strip()
     return ""
 
+def extract_value_after_colon(text, keyword):
+    line = get_line_with_keyword(text, keyword)
+    if ':' in line:
+        return line.split(':', 1)[1].strip()
+    return ""
+
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
@@ -140,10 +150,23 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif label == "Contractor Phone Number":
+                normalized_value = normalize_phone_number(value)
+                normalized_pdf_value = normalize_phone_number(pdf_text)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized phone '{value}' in PDF text"
             elif label == "AHJ":
+                pdf_value = extract_value_after_colon(pdf_text, "AHJ:")
                 normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_pdf_text else f"❌ (PDF: Not Found)"
-                explanation = f"Looked for '{value}' in PDF text"
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif label == "Utility":
+                pdf_value = extract_value_after_colon(pdf_text, "Utility:")
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_value)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
+                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label in ["Rafter/Truss Size", "Rafter/Truss Spacing"]:
                 normalized_value = normalize_dimension(value)
                 found = normalized_value in normalize_dimension(pdf_text)
@@ -180,57 +203,27 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
         results.append((label, field, value, status, explanation))
     return results
 
-def highlight_mismatches_in_pdf(doc, comparison, module_qty_pdf, inverter_qty_pdf):
-    highlight_color = (1, 0, 0)  # Red
-
-    for label, field, value, status, explanation in comparison:
-        if not status.startswith("❌") or not value:
-            continue  # Only highlight mismatches with a value
-
-        search_texts = []
-
-        # For quantity fields, highlight only the extracted PDF qty text
-        if label == "Module Quantity" and module_qty_pdf:
-            search_texts = [module_qty_pdf]
-        elif label == "Inverter Quantity" and inverter_qty_pdf:
-            search_texts = [inverter_qty_pdf]
-        else:
-            # For other fields, highlight CSV value as is
-            search_texts = [str(value).strip()]
-            if not search_texts[0]:
-                continue
-
-        found_something = False
-        for search_text in search_texts:
-            for page in doc:
-                text_instances = page.search_for(search_text, quads=False)
-                if not text_instances:
-                    text_instances = page.search_for(search_text.lower(), quads=False)
-                if text_instances:
-                    found_something = True
-                    for inst in text_instances:
-                        highlight = page.add_rect_annot(inst)
-                        highlight.set_colors(stroke=highlight_color, fill=(1, 0.8, 0.8))
-                        highlight.set_opacity(0.4)
-                        highlight.update()
-
-        if not found_something:
-            first_page = doc[0]
-            text = f"Mismatch for {label}: '{search_texts[0]}' not found"
-            rect = fitz.Rect(50, first_page.rect.height - 50, 450, first_page.rect.height - 30)
-            annot = first_page.add_text_annot(rect.tl, text)
-            annot.set_colors(stroke=(1, 0, 0))
-            annot.update()
-
 if csv_file and pdf_file:
     try:
         df = pd.read_csv(csv_file)
         csv_data = extract_csv_fields(df)
 
+        pdf_bytes = pdf_file.read()
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
+            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
+            pdf_text = extract_pdf_text(doc[:1]) + third_page_text
+
+        compiled_project_address = compile_project_address(csv_data)
+        csv_data["Compiled_Project_Address"] = compiled_project_address
+
+        compiled_customer_address = compile_customer_address(csv_data)
+        csv_data["Compiled_Customer_Address"] = compiled_customer_address
+
         fields_to_check = {
             "Contractor Name": "Engineering_Project__c.Customer__r.Name",
             "Contractor Address": "Compiled_Customer_Address",
-            "Contractor Phone Number": "Engineering_Project__c.Customer__r.Phone",
+            "Contractor Phone Number": "Engineering_Project__c.Customer__r.GRDS_Customer_Phone__c",
             "Contractor License Number": "Engineering_Project__c.Account_License_as_Text__c",
             "Property Owner": "Engineering_Project__c.Property_Owner_Name__c",
             "Project Address": "Compiled_Project_Address",
@@ -265,41 +258,11 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
-        # Compile addresses
-        compiled_project_address = compile_project_address(csv_data)
-        csv_data["Compiled_Project_Address"] = compiled_project_address
+        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
+        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
+        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
+        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
 
-        compiled_customer_address = compile_customer_address(csv_data)
-        csv_data["Compiled_Customer_Address"] = compiled_customer_address
-
-        pdf_bytes = pdf_file.read()
-        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-            contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
-            module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
-            pdf_text = extract_pdf_text(doc[:1]) + third_page_text
-
-            # Run comparison
-            comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-
-            # Count results for summary
-            match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
-            mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
-            missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
-
-            # Make a copy for markup
-            marked_doc = fitz.open()
-            for page in doc:
-                marked_doc.insert_pdf(doc, from_page=page.number, to_page=page.number)
-
-            # Highlight mismatches (pass the extracted quantities)
-            highlight_mismatches_in_pdf(marked_doc, comparison, module_qty_pdf, inverter_qty_pdf)
-
-            # Save marked-up PDF to memory buffer
-            pdf_buffer = io.BytesIO()
-            marked_doc.save(pdf_buffer)
-            pdf_buffer.seek(0)
-
-        # Display results and summary pie chart
         field_categories = {
             "CONTRACTOR DETAILS": [
                 "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
@@ -321,8 +284,12 @@ if csv_file and pdf_file:
             st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
             for label, field, value, status, explanation in comparison:
                 if label in fields:
-                    color = "red" if status.startswith("❌") else "green" if status.startswith("✅") else "orange"
-                    st.markdown(f"<span style='color:{color}'><strong>{label}:</strong> {value} → {status}</span>", unsafe_allow_html=True)
+                    if status.startswith("❌"):
+                        st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    elif status.startswith("⚠️"):
+                        st.markdown(f"<span style='color:orange'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
                     st.caption(explanation)
 
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
@@ -336,7 +303,6 @@ if csv_file and pdf_file:
         st.pyplot(fig)
 
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
-        st.download_button("Download Marked-up PDF", pdf_buffer, "marked_up_plan_set.pdf", "application/pdf")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
