@@ -88,11 +88,18 @@ def compile_customer_address(data):
     address_parts.extend([city, state, zip_code])
     return ", ".join([part for part in address_parts if part])
 
+def is_numeric(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
 def get_line_with_prefix(text, prefix):
     lines = text.splitlines()
     for line in lines:
         if line.strip().lower().startswith(prefix.lower()):
-            return line.split(":", 1)[-1].strip()
+            return line.strip()[len(prefix):].strip()
     return ""
 
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
@@ -103,9 +110,7 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
     manufacturer_aliases = {
         "iridg": "ironridge",
         "unirac": "unirac",
-        "snapnrack": "snapnrack",
-        "solaredge": "solaredge",
-        "enphase": "enphase"
+        "snapnrack": "snapnrack"
     }
 
     for label, field in fields_to_check.items():
@@ -139,6 +144,11 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_value = normalize_string(value)
                 status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif label == "Contractor Phone Number":
+                normalized_value = normalize_phone_number(value)
+                normalized_pdf_value = normalize_phone_number(pdf_text)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized phone '{value}' in PDF text"
             elif label == "AHJ":
                 pdf_value = get_line_with_prefix(pdf_text, "AHJ:")
                 normalized_value = normalize_string(value)
@@ -151,13 +161,28 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 normalized_pdf_value = normalize_string(pdf_value)
                 status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
-            elif label in ["Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model"]:
-                pdf_value = get_line_with_prefix(pdf_text, "type of racking") if "Racking" in label else get_line_with_prefix(pdf_text, "type of attachment")
+            elif label in ["Rafter/Truss Size", "Rafter/Truss Spacing"]:
+                normalized_value = normalize_dimension(value)
+                found = normalized_value in normalize_dimension(pdf_text)
+                status = "✅" if found else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized '{value}' in PDF text"
+            elif label in ["Racking Manufacturer", "Attachment Manufacturer"]:
                 normalized_value = normalize_string(value)
-                normalized_pdf_value = normalize_string(pdf_value)
                 alias_match = manufacturer_aliases.get(normalized_value, normalized_value)
-                status = "✅" if alias_match in normalized_pdf_value else f"❌ (PDF: {pdf_value})"
-                explanation = f"Compared alias '{alias_match}' from CSV='{value}' vs PDF='{pdf_value}'"
+                found = alias_match in normalized_pdf_text
+                status = "✅" if found else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for alias '{alias_match}' in PDF text"
+            elif label == "Roofing Material":
+                pdf_value = get_line_with_prefix(pdf_text, "Roof Surface Type:")
+                normalized_pdf_value = normalize_string(pdf_value)
+                components = re.split(r'[/|,]', value)
+                match_found = any(normalize_string(comp) in normalized_pdf_value for comp in components)
+                status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
+                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif is_numeric(value):
+                found = str(value) in pdf_text
+                status = "✅" if found else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for numeric value '{value}' in PDF text"
             else:
                 normalized_value = normalize_string(value)
                 found = normalized_value in normalized_pdf_text
@@ -226,15 +251,34 @@ if csv_file and pdf_file:
         mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
         missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
 
+        field_categories = {
+            "CONTRACTOR DETAILS": [
+                "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
+            ],
+            "PROPERTY": [
+                "Property Owner", "Project Address", "Utility", "AHJ", "IBC", "IFC", "IRC", "NEC", "Rafter/Truss Size", "Rafter/Truss Spacing", "Roofing Material"
+            ],
+            "EQUIPMENT": [
+                "Module Manufacturer", "Module Part Number", "Module Quantity",
+                "Inverter Manufacturer", "Inverter Part Number", "Inverter Quantity",
+                "Racking Manufacturer", "Racking Model", "Attachment Manufacturer", "Attachment Model",
+                "ESS Battery Manufacturer", "ESS Battery Model", "ESS Battery Quantity",
+                "ESS Inverter Manufacturer", "ESS Inverter Model", "ESS Inverter Quantity"
+            ]
+        }
+
         st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
-        for label, field, value, status, explanation in comparison:
-            if status.startswith("❌"):
-                st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            elif status.startswith("⚠️"):
-                st.markdown(f"<span style='color:orange'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
-            st.caption(explanation)
+        for category, fields in field_categories.items():
+            st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
+            for label, field, value, status, explanation in comparison:
+                if label in fields:
+                    if status.startswith("❌"):
+                        st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    elif status.startswith("⚠️"):
+                        st.markdown(f"<span style='color:orange'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
+                    st.caption(explanation)
 
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
