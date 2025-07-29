@@ -200,7 +200,7 @@ if csv_file and pdf_file:
         fields_to_check = {
             "Contractor Name": "Engineering_Project__c.Customer__r.Name",
             "Contractor Address": "Compiled_Customer_Address",
-            "Contractor Phone Number": "Engineering_Project__c.Customer__r.Phone",
+            "Contractor Phone Number": "Engineering_Project__c.Customer__r.GRDS_Customer_Phone__c",
             "Contractor License Number": "Engineering_Project__c.Account_License_as_Text__c",
             "Property Owner": "Engineering_Project__c.Property_Owner_Name__c",
             "Project Address": "Compiled_Project_Address",
