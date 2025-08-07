@@ -32,7 +32,7 @@ def extract_pdf_text(doc):
 
 def extract_module_wattage(part_number):
     part_number = str(part_number).upper()
-    # Find all 3- or 4-digit numbers
+    # Find all 3 or 4-digit numbers
     matches = re.findall(r'(\d{3,4})(?=[^\d]|$)', part_number)
     # Define realistic wattage range
     valid_wattage_range = range(250, 800)  # Adjust as needed
@@ -394,6 +394,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
