@@ -38,8 +38,7 @@ def extract_module_wattage(part_number):
     return None
 
 def extract_dc_size_kw(pdf_text):
-    dc_line = get_line_with_keyword(pdf_text, "DC Size:")
-    match = re.search(r'DC Size:\\s*([\\d.]+)', dc_line)
+    match = re.search(r'DC SIZE[:\s\-]*([\d.]+)\s*KW', pdf_text, re.IGNORECASE)
     if match:
         try:
             return float(match.group(1))
@@ -383,6 +382,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
