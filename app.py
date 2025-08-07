@@ -30,6 +30,22 @@ def extract_pdf_text(doc):
         pdf_text += page.get_text()
     return pdf_text
 
+def extract_module_wattage(part_number):
+    part_number = str(part_number).upper()
+    match = re.search(r'(\d{3,4})(?=[^\d]|$)', part_number)
+    if match:
+        return int(match.group(1))
+    return None
+
+def extract_dc_size_kw(pdf_text):
+    match = re.search(r'DC SIZE[:\s\-]*([\d.]+)\s*KW', pdf_text, re.IGNORECASE)
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+    return None
+
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
     third_page_text = doc[2].get_text() if len(doc) >= 3 else ""
@@ -329,6 +345,28 @@ if csv_file and pdf_file:
                         st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
                     st.caption(explanation)
 
+                    if label == "Module Part Number":
+                        extracted_wattage = extract_module_wattage(value)
+                        if extracted_wattage:
+                            st.markdown(f"<span style='color:#2196F3'><strong>Extracted Module Wattage:</strong> `{extracted_wattage}`</span>", unsafe_allow_html=True)
+                           
+                            module_qty = csv_data.get("Engineering_Project__c.Module_Quantity__c", "")
+                            try:
+                                module_qty_int = int(str(module_qty).lstrip("0")) if str(module_qty).isdigit() else None
+                                if extracted_wattage and module_qty_int:
+                                    total_kw = (extracted_wattage * module_qty_int) / 1000
+                                    st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
+                            except:
+                                st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
+
+                            dc_size_kw = extract_dc_size_kw(pdf_text)
+                            if dc_size_kw is not None:
+                                status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
+                                st.markdown(f"<span style='color:#2196F3'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
+                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
+                            else:
+                                st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
+
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
@@ -344,3 +382,14 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
+
+
+
+
+
+
+
+
+
+
