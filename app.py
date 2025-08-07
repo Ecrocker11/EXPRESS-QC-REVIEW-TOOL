@@ -37,6 +37,16 @@ def extract_module_wattage(part_number):
         return int(match.group(1))
     return None
 
+def extract_dc_size_kw(pdf_text):
+    dc_line = get_line_with_keyword(pdf_text, "DC Size:")
+    match = re.search(r'DC Size:\\s*([\\d.]+)', dc_line)
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+    return None
+
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
     third_page_text = doc[2].get_text() if len(doc) >= 3 else ""
@@ -349,7 +359,15 @@ if csv_file and pdf_file:
                                     st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
                             except:
                                 st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
-                       
+                            
+                            dc_size_kw = extract_dc_size_kw(pdf_text)
+                            if dc_size_kw is not None:
+                                status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
+                                st.markdown(f"<span style='color:#3F51B5'><strong>DC Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
+                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
+                            else:
+                                st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
+
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
@@ -365,6 +383,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
