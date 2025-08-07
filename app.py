@@ -30,6 +30,13 @@ def extract_pdf_text(doc):
         pdf_text += page.get_text()
     return pdf_text
 
+def extract_module_wattage(part_number):
+    part_number = str(part_number).upper()
+    match = re.search(r'(\d{3,4})(?=[^\d]|$)', part_number)
+    if match:
+        return int(match.group(1))
+    return None
+
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
     third_page_text = doc[2].get_text() if len(doc) >= 3 else ""
@@ -329,6 +336,11 @@ if csv_file and pdf_file:
                         st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
                     st.caption(explanation)
 
+                    if label == "Module Part Number":
+                        extracted_wattage = extract_module_wattage(value)
+                        if extracted_wattage:
+                            st.markdown(f"<span style='color:#2196F3'><strong>Extracted Module Wattage:</strong> `{extracted_wattage}`</span>", unsafe_allow_html=True)
+
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
@@ -344,3 +356,4 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
