@@ -31,11 +31,11 @@ def extract_pdf_text(doc):
     return pdf_text
 
 def extract_module_wattage(part_number):
+    import re
     part_number = str(part_number).upper()
-    # Match 3 or 4 digit number optionally followed by 'W' or non-digit/end of string
-    match = re.search(r'(\d{3,4})(W)?(?=[^\d]|$)', part_number)
-    if match:
-        return int(match.group(1))
+    matches = re.findall(r'(\d{3,4})(?=[^\d]|$)', part_number)
+    if matches:
+        return int(matches[-1])  # Take the last match
     return None
 
 def extract_dc_size_kw(pdf_text):
@@ -383,6 +383,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
