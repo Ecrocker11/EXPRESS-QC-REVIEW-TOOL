@@ -340,7 +340,16 @@ if csv_file and pdf_file:
                         extracted_wattage = extract_module_wattage(value)
                         if extracted_wattage:
                             st.markdown(f"<span style='color:#2196F3'><strong>Extracted Module Wattage:</strong> `{extracted_wattage}`</span>", unsafe_allow_html=True)
-
+                           
+                            module_qty = csv_data.get("Engineering_Project__c.Module_Quantity__c", "")
+                            try:
+                                module_qty_int = int(str(module_qty).lstrip("0")) if str(module_qty).isdigit() else None
+                                if extracted_wattage and module_qty_int:
+                                    total_kw = (extracted_wattage * module_qty_int) / 1000
+                                    st.markdown(f"<span style='color:#4CAF50'><strong>Total System Size:</strong> `{total_kw} kW`</span>", unsafe_allow_html=True)
+                            except:
+                                st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
+                       
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
@@ -356,4 +365,5 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
