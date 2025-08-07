@@ -359,13 +359,14 @@ if csv_file and pdf_file:
                             except:
                                 st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
                             
-                            dc_size_kw = extract_dc_size_kw(pdf_text)
+                           dc_size_kw = extract_dc_size_kw(pdf_text)
                             if dc_size_kw is not None:
                                 status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
                                 st.markdown(f"<span style='color:#3F51B5'><strong>DC Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
-                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
+                                st.caption(f"Calculated system size is `{total_kw:.3f} kW` based on `{extracted_wattage} W × {module_qty_int} modules`. PDF shows `DC Size: {dc_size_kw:.3f} kW`.")
                             else:
                                 st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
+
 
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
@@ -382,6 +383,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
