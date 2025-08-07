@@ -346,7 +346,7 @@ if csv_file and pdf_file:
                                 module_qty_int = int(str(module_qty).lstrip("0")) if str(module_qty).isdigit() else None
                                 if extracted_wattage and module_qty_int:
                                     total_kw = (extracted_wattage * module_qty_int) / 1000
-                                    st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kwL.3f} kW`</span>", unsafe_allow_html=True)
+                                    st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
                             except:
                                 st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
                        
