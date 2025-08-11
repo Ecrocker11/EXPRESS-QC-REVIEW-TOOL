@@ -257,7 +257,7 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Address":
                 normalized_value = normalize_string(value)
-                address_parts = normalized_value.split(normalize_string(","))
+                address_parts = normalized_value.split(",")
                 pdf_lines = pdf_text.splitlines()
                 match_found = False
                 for part in address_parts:
@@ -407,6 +407,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
