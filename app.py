@@ -255,23 +255,14 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 match_found = any(normalize_string(comp) in normalized_pdf_value for comp in components)
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
-            elif label == "Contractor Address":
-                normalized_value = normalize_string(value)
+             elif label == "Contractor Address":
+                normalized_parts = [normalize_string(part) for part in value.split(",") if part.strip()]
                 pdf_lines = pdf_text.splitlines()
-                match_found = False
-                for i, line in enumerate(pdf_lines):
-                    # Check current line
-                    if normalized_value in normalize_string(line):
-                        match_found = True
-                        break
-                    # Check current + next line
-                    if i + 1 < len(pdf_lines):
-                        combined = line + " " + pdf_lines[i + 1]
-                        if normalized_value in normalize_string(combined):
-                            match_found = True
-                            break
-                status = "✅" if match_found else f"❌ (PDF: Not Found)"
-                explanation = f"Looked for normalized contractor address '{value}' in PDF text, including adjacent lines"
+                pdf_text_combined = " ".join(pdf_lines)
+                normalized_pdf_text = normalize_string(pdf_text_combined)
+                match_count = sum(1 for part in normalized_parts if part in normalized_pdf_text)
+                status = "✅" if match_count >= len(normalized_parts) - 1 else f"❌ (PDF: Not Found)"
+                explanation = f"Matched {match_count} of {len(normalized_parts)} address parts in PDF text"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -411,6 +402,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
