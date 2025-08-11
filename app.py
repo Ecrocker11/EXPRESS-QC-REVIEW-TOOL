@@ -260,17 +260,14 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 pdf_lines = pdf_text.splitlines()
                 match_found = False
             
-                for i, line in enumerate(pdf_lines):
-                    if normalized_value in normalize_string(line):
+                for i in range(len(pdf_lines) - 1):
+                    line1 = normalize_string(pdf_lines[i])
+                    line2 = normalize_string(pdf_lines[i + 1])
+                    combined = line1 + line2
+            
+                    if normalized_value in line1 or normalized_value in line2 or normalized_value in combined:
                         match_found = True
                         break
-                    # Check if combining this line with the next line matches
-                    if i + 1 < len(pdf_lines):
-                        combined = line + " " + pdf_lines[i + 1]
-                        if normalized_value in normalize_string(combined):
-                            match_found = True
-                            break
-            
                 status = "✅" if match_found else f"❌ (PDF: Not Found)"
                 explanation = f"Looked for normalized contractor address '{value}' in PDF text, including adjacent lines"
             elif is_numeric(value):
@@ -412,6 +409,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
