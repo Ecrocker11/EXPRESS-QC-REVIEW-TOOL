@@ -256,19 +256,23 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Address":
-                # Extract lines around the contractor name
-                contractor_lines = []
-                for i, line in enumerate(pdf_text.splitlines()):
-                    if normalize_string(csv_data.get("Engineering_Project__c.Customer__r.Name", "")) in normalize_string(line):
-                        # Grab the next few lines to capture multi-line address
-                        contractor_lines = pdf_text.splitlines()[i:i+5]
+                normalized_value = normalize_string(value)
+                pdf_lines = pdf_text.splitlines()
+                match_found = False
+            
+                for i, line in enumerate(pdf_lines):
+                    if normalized_value in normalize_string(line):
+                        match_found = True
                         break
-                # Combine and normalize the block
-                pdf_address_block = " ".join(contractor_lines)
-                normalized_csv_value = normalize_string(value)
-                normalized_pdf_value = normalize_string(pdf_address_block)
-                status = "✅" if normalized_csv_value in normalized_pdf_value else f"❌ (PDF: {pdf_address_block})"
-                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_address_block}'"
+                    # Check if combining this line with the next line matches
+                    if i + 1 < len(pdf_lines):
+                        combined = line + " " + pdf_lines[i + 1]
+                        if normalized_value in normalize_string(combined):
+                            match_found = True
+                            break
+            
+                status = "✅" if match_found else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized contractor address '{value}' in PDF text, including adjacent lines"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -408,6 +412,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
