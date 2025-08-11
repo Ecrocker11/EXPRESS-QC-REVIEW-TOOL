@@ -260,14 +260,12 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 address_parts = normalized_value.split(normalize_string(","))
                 pdf_lines = pdf_text.splitlines()
                 match_found = False
-            
                 for part in address_parts:
                     if any(part in normalize_string(line) for line in pdf_lines):
                         match_found = True
                     else:
                         match_found = False
                         break  # If any part doesn't match, it's a mismatch
-            
                 status = "✅" if match_found else f"❌ (PDF: Not Found)"
                 explanation = f"Checked each part of contractor address '{value}' across PDF lines"
             elif is_numeric(value):
@@ -409,6 +407,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
