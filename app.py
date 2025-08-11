@@ -256,13 +256,21 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Address":
-                normalized_parts = [normalize_string(part) for part in value.split(",") if part.strip()]
+                street1 = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", "")
+                city = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", "")
+                state = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", "")
+                zip_code = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+            
                 pdf_lines = pdf_text.splitlines()
-                pdf_text_combined = " ".join(pdf_lines)
-                normalized_pdf_text = normalize_string(pdf_text_combined)
-                match_count = sum(1 for part in normalized_parts if part in normalized_pdf_text)
-                status = "✅" if match_count >= len(normalized_parts) - 1 else f"❌ (PDF: Not Found)"
-                explanation = f"Matched {match_count} of {len(normalized_parts)} address parts in PDF text"
+                match_found = all(
+                    any(normalize_string(part) in normalize_string(line) for line in pdf_lines)
+                    for part in [street1, city, state, zip_code]
+                    if part
+                )
+            
+                status = "✅" if match_found else f"❌ (PDF: Not Found)"
+                explanation = f"Checked each address component separately in PDF text"
+
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -402,6 +410,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
