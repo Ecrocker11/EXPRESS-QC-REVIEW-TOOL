@@ -255,6 +255,18 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 match_found = any(normalize_string(comp) in normalized_pdf_value for comp in components)
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+            elif label == "Contractor Address":
+                # Extract lines around the contractor name
+                contractor_lines = []
+                for i, line in enumerate(pdf_text.splitlines()):
+                    if normalize_string(csv_data.get("Engineering_Project__c.Customer__r.Name", "")) in normalize_string(line):
+                        contractor_lines = pdf_text.splitlines()[i:i+3]  # Grab next 2 lines as well
+                        break
+                pdf_address_block = " ".join(contractor_lines)
+                normalized_value = normalize_string(value)
+                normalized_pdf_value = normalize_string(pdf_address_block)
+                status = "✅" if normalized_value in normalized_pdf_value else f"❌ (PDF: {pdf_address_block})"
+                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_address_block}'"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -394,6 +406,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
