@@ -563,6 +563,11 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
+        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
+        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
+        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
+        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
+
         # --- TOP HIGHLIGHT SECTION: Mismatches + Missing ---
         # (Place after computing `comparison` and counts, before rendering categories)
         
@@ -597,12 +602,7 @@ if csv_file and pdf_file:
                             unsafe_allow_html=True
                         )
                         st.caption(explanation)
-
-        comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
-        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
-        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
-
+        
         field_categories = {
             "CONTRACTOR DETAILS": [
                 "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
@@ -724,6 +724,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
