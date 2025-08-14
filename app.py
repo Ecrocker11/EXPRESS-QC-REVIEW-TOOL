@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -6,11 +5,77 @@ import re
 import io
 import matplotlib.pyplot as plt
 import traceback
+from typing import Optional
+
 
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
+
+def compute_extra_checks(csv_data, pdf_text):
+    """
+    Build a list of extra audit rows (label, field, value, status, explanation)
+    for DC System Size and Tesla MCI checks. These rows are designed to plug
+    into your existing summary logic.
+    """
+    extra = []
+
+    # ---- DC System Size Check ----
+    module_part = csv_data.get("Engineering_Project__c.Module_Part_Number__c", "")
+    module_qty_str = csv_data.get("Engineering_Project__c.Module_Quantity__c", "")
+    watt = extract_module_wattage(module_part)
+    try:
+        module_qty_int = int(str(module_qty_str).lstrip("0")) if str(module_qty_str).isdigit() else None
+    except Exception:
+        module_qty_int = None
+
+    total_kw = None
+    if watt and module_qty_int:
+        total_kw = (watt * module_qty_int) / 1000.0
+
+    dc_pdf = extract_dc_size_kw(pdf_text)
+
+    if total_kw is not None and dc_pdf is not None:
+        dc_status = "✅" if abs(total_kw - dc_pdf) < 0.01 else f"❌ Calculated {total_kw:.3f} kW vs PDF {dc_pdf:.3f} kW"
+        extra.append((
+            "DC System Size Check", "-", "-", dc_status,
+            f"Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_pdf:.3f} kW`"
+        ))
+    elif total_kw is not None and dc_pdf is None:
+        extra.append((
+            "DC System Size Check", "-", "-", "⚠️ DC Size not found in PDF",
+            "No 'DC SIZE' pattern found (e.g., 'DC SIZE: 7.000 KW')."
+        ))
+    # else: not enough info to compute, skip
+
+    # ---- TESLA MCI CHECK ----
+    inverter_mfr = str(csv_data.get("Engineering_Project__c.Inverter_Manufacturer__c", "")).strip().lower()
+    if inverter_mfr == "tesla":
+        strict_val, strict_context, strict_value_line = extract_module_imp_by_nextline(pdf_text)
+        imp_val = strict_val
+        used_strict = True
+        if imp_val is None:
+            used_strict = False
+            imp_val = extract_module_imp_from_pdf(pdf_text)
+
+        if imp_val is not None:
+            if imp_val > 13:
+                tesla_status = f"❌ Module Imp = {imp_val:g} A (Above 13)"
+            else:
+                tesla_status = f"✅ Module Imp = {imp_val:g} A (OK)"
+            explain_src = "Strict 'IMP' next-line" if used_strict else "Inline module spec"
+            extra.append((
+                "TESLA MCI CHECK", "Module Imp (A)", "-", tesla_status,
+                f"{explain_src}. MCI allowable module Imp: 13 A."
+            ))
+        else:
+            extra.append((
+                "TESLA MCI CHECK", "Module Imp (A)", "-", "⚠️ Could not extract module Imp",
+                "No isolated 'IMP' line and no acceptable inline module spec found."
+            ))
+
+    return extra
 
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
@@ -29,6 +94,64 @@ def extract_pdf_text(doc):
     for page in doc:
         pdf_text += page.get_text()
     return pdf_text
+
+def contractor_name_match(value, pdf_text):
+    normalized_value = normalize_string(value)
+    lines = pdf_text.splitlines()
+    for i in range(len(lines) - 2):
+        block = " ".join(lines[i:i+2])  # check 2-line blocks
+        if normalized_value in normalize_string(block):
+            return True, block.strip()
+    return False, None
+
+def contractor_address_match(address_dict, pdf_text):
+    # Pre-normalize CSV components
+    street = address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", "")
+    city = address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", "")
+    state_full = normalize_state(address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""))
+    zipc = address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+
+    # Normalize each component to normalized-string form
+    csv_components_norm = [
+        normalize_string(street),
+        normalize_string(city),
+        normalize_string(state_full),  # full state name
+        normalize_string(zipc),
+    ]
+    csv_components_norm = [c for c in csv_components_norm if c]  # drop empties
+
+    lines = pdf_text.splitlines()
+    for block in block_candidates(lines):
+        # Replace state abbrs with full names using boundaries, then normalize
+        block_with_full_states = normalize_states_in_text(block)
+        block_norm = normalize_string(block_with_full_states)
+
+        if all(comp in block_norm for comp in csv_components_norm):
+            return True
+    return False
+
+def project_address_match(address_dict, pdf_text):
+    street = address_dict.get("Engineering_Project__c.Installation_Street_Address_1__c", "")
+    city = address_dict.get("Engineering_Project__c.Installation_City__c", "")
+    state_full = normalize_state(address_dict.get("Engineering_Project__c.Installation_State__c", ""))
+    zipc = address_dict.get("Engineering_Project__c.Installation_Zip_Code__c", "")
+
+    csv_components_norm = [
+        normalize_string(street),
+        normalize_string(city),
+        normalize_string(state_full),
+        normalize_string(zipc),
+    ]
+    csv_components_norm = [c for c in csv_components_norm if c]
+
+    lines = pdf_text.splitlines()
+    for block in block_candidates(lines):
+        block_with_full_states = normalize_states_in_text(block)
+        block_norm = normalize_string(block_with_full_states)
+
+        if all(comp in block_norm for comp in csv_components_norm):
+            return True
+    return False
 
 def extract_module_wattage(part_number):
     part_number = str(part_number).upper()
@@ -57,6 +180,105 @@ def extract_dc_size_kw(pdf_text):
         except ValueError:
             return None
     return None
+
+def extract_module_imp_by_nextline(pdf_text: str):
+    """
+    Strict mode: find a line that contains only 'IMP' or 'IMPP' (ignoring punctuation/whitespace),
+    then take the next non-empty line and parse the first number as the value (amps).
+    Returns (value_float, context_line, value_line) or (None, None, None).
+    """
+    lines = [ln.rstrip() for ln in pdf_text.splitlines()]  # keep original cases/spaces for context
+    # Precompute a normalized version for matching the 'IMP'-only line
+    norm = []
+    for ln in lines:
+        # remove punctuation and spaces, keep letters/digits
+        comp = re.sub(r'[^a-z0-9]', '', ln.lower())
+        norm.append(comp)
+
+    for i, comp in enumerate(norm):
+        if comp in ("imp", "impp"):  # allow 'IMPP' as some datasheets use Impp
+            # find the next non-empty line
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            if j < len(lines):
+                value_line = lines[j].strip()
+                # parse first numeric like 13 or 13.56 possibly followed by 'A'
+                m = re.search(r'([0-9]+(?:\.[0-9]+)?)', value_line.replace(',', ''))
+                if m:
+                    try:
+                        return float(m.group(1)), lines[i], value_line
+                    except Exception:
+                        pass
+    return None, None, None
+
+def extract_module_imp_from_pdf(pdf_text: str) -> Optional[float]:
+    """
+    Prefer the module spec line (e.g., 'VMP 32.1 V IMP 13.56 A VOC 38.6 V ISC 14.32 A').
+    Avoid inverter/MPPT lines like 'MAX CURRENT PER MPPT (IMP) 13A'.
+    Also accepts 'Impp' (datasheet tables) as a synonym.
+    """
+    lines = [ln.strip() for ln in pdf_text.splitlines() if ln.strip()]
+    # Candidate lines: must contain IMP/IMPP and at least one of VMP/VOC/ISC (module spec context)
+    module_ctx_candidates = []
+    for ln in lines:
+        lower = ln.lower()
+        if ("imp" in lower or "impp" in lower) and any(k in lower for k in ("vmp", "voc", "isc")):
+            # exclude obvious inverter/MPPT/inverter spec lines
+            if "mppt" in lower or "max current per mppt" in lower or "inverter specifications" in lower:
+                continue
+            module_ctx_candidates.append(ln)
+
+    # Search in high-confidence candidates first
+    imp_pattern = re.compile(r'(?i)\bimpp?\b[^0-9\-]{0,20}([0-9]+(?:\.[0-9]+)?)')
+    for ln in module_ctx_candidates:
+        m = imp_pattern.search(ln)
+        if m:
+            try:
+                return float(m.group(1))
+            except Exception:
+                pass
+
+    # Secondary strategy: search the block after 'SOLAR MODULE SPECIFICATIONS'
+    block = ""
+    for i, ln in enumerate(lines):
+        if "solar module specifications" in ln.lower():
+            block = "\n".join(lines[i:i+6])  # look a few lines forward
+            break
+    if block:
+        m = imp_pattern.search(block)
+        if m:
+            try:
+                return float(m.group(1))
+            except Exception:
+                pass
+
+    # Fallback: any IMP line, but explicitly skip inverter/MPPT lines
+    for ln in lines:
+        lower = ln.lower()
+        if ("imp" in lower or "impp" in lower) and not ("mppt" in lower or "max current per mppt" in lower or "inverter" in lower):
+            m = imp_pattern.search(ln)
+            if m:
+                try:
+                    return float(m.group(1))
+                except Exception:
+                    pass
+
+    return None
+# State mapping dictionary
+STATE_MAP = {
+    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar", "california": "ca",
+    "colorado": "co", "connecticut": "ct", "delaware": "de", "florida": "fl", "georgia": "ga",
+    "hawaii": "hi", "idaho": "id", "illinois": "il", "indiana": "in", "iowa": "ia",
+    "kansas": "ks", "kentucky": "ky", "louisiana": "la", "maine": "me", "maryland": "md",
+    "massachusetts": "ma", "michigan": "mi", "minnesota": "mn", "mississippi": "ms",
+    "missouri": "mo", "montana": "mt", "nebraska": "ne", "nevada": "nv", "new hampshire": "nh",
+    "new jersey": "nj", "new mexico": "nm", "new york": "ny", "north carolina": "nc",
+    "north dakota": "nd", "ohio": "oh", "oklahoma": "ok", "oregon": "or", "pennsylvania": "pa",
+    "rhode island": "ri", "south carolina": "sc", "south dakota": "sd", "tennessee": "tn",
+    "texas": "tx", "utah": "ut", "vermont": "vt", "virginia": "va", "washington": "wa",
+    "west virginia": "wv", "wisconsin": "wi", "wyoming": "wy"
+}
 
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
@@ -140,6 +362,62 @@ def get_line_with_keyword(text, keyword):
 def apply_alias(value, alias_dict):
     normalized_value = normalize_string(value)
     return alias_dict.get(normalized_value, normalized_value)
+# Add DC
+STATE_MAP.update({
+    "district of columbia": "dc"
+})
+
+ABBR_TO_FULL = {abbr: full for full, abbr in STATE_MAP.items()}
+
+def normalize_state(state_str: str) -> str:
+    """Return the full state name in lowercase (e.g., 'ca' -> 'california', 'California' -> 'california')."""
+    s = str(state_str).strip().lower()
+    if not s:
+        return ""
+    if s in STATE_MAP:
+        return s  # already full name
+    # If it's an abbreviation, map to full
+    full = ABBR_TO_FULL.get(s)
+    return full if full else s
+
+def normalize_states_in_text(text: str) -> str:
+    """
+    Replace standalone 2-letter state abbreviations in free text with full names
+    using word boundaries, BEFORE general normalization.
+    Example: 'Portland, OR 97201' -> 'Portland, oregon 97201'
+    """
+    if not text:
+        return text
+
+    # Build a word-boundary regex for all two-letter abbreviations
+    abbrs = sorted(ABBR_TO_FULL.keys(), key=len, reverse=True)
+    pattern = r'(?<![A-Za-z])(' + '|'.join(map(re.escape, abbrs)) + r')(?![A-Za-z])'
+
+    def _repl(m):
+        return ABBR_TO_FULL[m.group(1).lower()]
+
+    return re.sub(pattern, _repl, text, flags=re.IGNORECASE)
+
+def block_candidates(lines):
+    """Yield 1-, 2-, and 3-line joined blocks to be robust to line wrapping."""
+    n = len(lines)
+    for i in range(n):
+        for span in (1, 2, 3):
+            if i + span <= n:
+                block = " ".join(lines[i:i+span]).strip()
+                if block:
+                    yield block    
+
+def normalize_state(state_str):
+    s = str(state_str).strip().lower()
+    if not s:
+        return ""
+    if s in STATE_MAP:
+        return s  # already full name
+    for full, abbr in STATE_MAP.items():
+        if s == abbr:
+            return full
+    return s
 
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
@@ -203,10 +481,11 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                     status = f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Name":
-                pdf_value = contractor_name_pdf
-                normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (PDF: {pdf_value})"
-                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+                match, matched_line = contractor_name_match(value, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized name '{value}' in PDF text"
+                if matched_line:
+                    explanation += f" | Matched Line: '{matched_line}'"
             elif label == "Contractor Phone Number":
                 normalized_value = normalize_phone_number(value)
                 normalized_pdf_value = normalize_phone_number(pdf_text)
@@ -256,21 +535,26 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Address":
-                street1 = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", "")
-                city = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", "")
-                state = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", "")
-                zip_code = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+                address_dict = {
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+                }
+                match = contractor_address_match(address_dict, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
+                explanation = "Checked each address component with state normalization"
             
-                pdf_lines = pdf_text.splitlines()
-                match_found = all(
-                    any(normalize_string(part) in normalize_string(line) for line in pdf_lines)
-                    for part in [street1, city, state, zip_code]
-                    if part
-                )
-            
-                status = "✅" if match_found else f"❌ (PDF: Not Found)"
-                explanation = f"Checked each address component separately in PDF text"
-
+            elif label == "Project Address":
+                address_dict = {
+                    "Engineering_Project__c.Installation_Street_Address_1__c": csv_data.get("Engineering_Project__c.Installation_Street_Address_1__c", ""),
+                    "Engineering_Project__c.Installation_City__c": csv_data.get("Engineering_Project__c.Installation_City__c", ""),
+                    "Engineering_Project__c.Installation_State__c": csv_data.get("Engineering_Project__c.Installation_State__c", ""),
+                    "Engineering_Project__c.Installation_Zip_Code__c": csv_data.get("Engineering_Project__c.Installation_Zip_Code__c", "")
+                }
+                match = project_address_match(address_dict, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
+                explanation = "Checked each address component with state normalization"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -293,7 +577,7 @@ if csv_file and pdf_file:
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
             module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
-            pdf_text = extract_pdf_text(doc[:1]) + third_page_text
+            pdf_text = extract_pdf_text(doc[:1]) + third_page_text + doc[3].get_text()
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -340,10 +624,63 @@ if csv_file and pdf_file:
             })
 
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
-        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
-        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
+        
+        # >>> NEW: compute extra checks BEFORE the summary <<<
+        extra_checks = compute_extra_checks(csv_data, pdf_text)
+        
+        # Combine for summary + counts
+        all_items = comparison + extra_checks
+        
+        match_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("✅"))
+        mismatch_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("❌"))
+        missing_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("⚠️"))
+        
+        # Build lists used by the expanders from the combined list
+        mismatches = [item for item in all_items if str(item[3]).startswith("❌")]
+        missings   = [item for item in all_items if str(item[3]).startswith("⚠️")]
 
+
+        st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
+        
+        total = match_count + mismatch_count + missing_count
+        if total == 0:
+            st.write("No data to summarize.")
+        else:
+            pass_pct = (match_count / total) * 100
+            fail_pct = (mismatch_count / total) * 100
+            missing_pct = (missing_count / total) * 100
+        
+            summary_html = f"""
+            <div style='display:flex; gap:20px; font-size:18px;'>
+                <span style='color:#8BC34A;'><strong>PASS:</strong> ({match_count}) {pass_pct:.1f}%</span>
+                <span style='color:#FF5722;'><strong>FAIL:</strong> ({mismatch_count}) {fail_pct:.1f}%</span>
+                <span style='color:#FFC107;'><strong>MISSING:</strong> ({missing_count}) {missing_pct:.1f}%</span>
+            </div>
+            """
+            st.markdown(summary_html, unsafe_allow_html=True)
+  
+
+            # Optional: expanders to keep the top compact
+            if mismatches:
+                with st.expander(f"🚨 Mismatches ({len(mismatches)})", expanded=True):
+                    for label, field, value, status, explanation in mismatches:
+                        st.markdown(
+                            f"<span style='color:#d32f2f'><strong>{label}:</strong> "
+                            f"`{value}` → {status}</span>",
+                            unsafe_allow_html=True
+                        )
+                        st.caption(explanation)
+        
+            if missings:
+                with st.expander(f"⚠️ Missing ({len(missings)})", expanded=False):
+                    for label, field, value, status, explanation in missings:
+                        st.markdown(
+                            f"<span style='color:#f57c00'><strong>{label}:</strong> "
+                            f"`{value}` → {status}</span>",
+                            unsafe_allow_html=True
+                        )
+                        st.caption(explanation)
+        
         field_categories = {
             "CONTRACTOR DETAILS": [
                 "Contractor Name", "Contractor Address", "Contractor Phone Number", "Contractor License Number"
@@ -360,7 +697,6 @@ if csv_file and pdf_file:
             ]
         }
 
-        st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
         for category, fields in field_categories.items():
             st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
             for label, field, value, status, explanation in comparison:
@@ -394,46 +730,81 @@ if csv_file and pdf_file:
                                 st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
                             else:
                                 st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
+                                
+                            # ----------------------------
+                            # Tesla-specific Imp check (strict 'IMP' next-line first, then fallback)
+                            # ----------------------------
+                            inverter_mfr = str(csv_data.get("Engineering_Project__c.Inverter_Manufacturer__c", "")).strip().lower()
+                            if inverter_mfr == "tesla":
+                                tesla_status = None
+                            
+                                # 1) STRICT: look for line == 'IMP' (or 'IMPP') and take the next line as the value
+                                strict_val, strict_context, strict_value_line = extract_module_imp_by_nextline(pdf_text)
+                            
+                                if strict_val is not None:
+                                    # Report using strict method
+                                    if strict_val > 13:
+                                        tesla_status = f"❌ Module Imp = {strict_val} A (Above {13:g})"
+                                        st.markdown(
+                                            f"<span style='color:red'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
+                                            unsafe_allow_html=True
+                                        )
+                                    else:
+                                        tesla_status = f"✅ Module Imp = {strict_val} A (OK)"
+                                        st.markdown(
+                                            f"<span style='color:green'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
+                                            unsafe_allow_html=True
+                                        )
+                                    # Show context lines to aid debugging
+                                    st.caption(f"Review: `{strict_context}` → `{strict_value_line}`")
+                            
+                                else:
+                                    # 2) FALLBACK: parse inline module spec line (e.g., 'VMP ... IMP 13.56 A VOC ...')
+                                    inline_val = extract_module_imp_from_pdf(pdf_text)
+                                    if inline_val is not None:
+                                        if inline_val > 13:
+                                            tesla_status = f"❌ Module Imp = {inline_val} A (Above {13:g})"
+                                            st.markdown(
+                                                f"<span style='color:red'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
+                                                unsafe_allow_html=True
+                                            )
+                                        else:
+                                            tesla_status = f"✅ Module Imp = {inline_val} A (OK)"
+                                            st.markdown(
+                                                f"<span style='color:green'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
+                                                unsafe_allow_html=True
+                                            )
+                                        # Optional: show a helpful hint about inline source
+                                        st.caption("Used inline module spec (no isolated 'IMP' line found).")
+                                    else:
+                                        tesla_status = "⚠️ Could not extract module Imp (no isolated 'IMP' line and no inline module spec found)"
+                                        st.markdown(
+                                            f"<span style='color:orange'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
+                                            unsafe_allow_html=True
+                                        )
+                                    
+                                    # Add Tesla check to audit CSV
+                                    comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {13:g} A"))
+                                    
+                                    # --- Add DC System Size Check to summary if it failed ---
+                                    if 'status' in locals() and status.startswith("❌"):  # from DC size comparison
+                                        mismatches.append((
+                                            "DC System Size Check", "-", "-", status,
+                                            f"Calculated vs PDF mismatch: {total_kw:.3f} kW vs {dc_size_kw:.3f} kW"
+                                        ))
+                                    
+                                    # --- Add Tesla MCI Check to summary if it failed ---
+                                    if tesla_status and tesla_status.startswith("❌"):
+                                        mismatches.append((
+                                            "TESLA MCI CHECK", "-", "-", tesla_status,
+                                            "Module Imp exceeds Tesla limit (13 A)"
+                                        ))
 
-        st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
-        labels = ['PASS', 'FAIL', 'MISSING']
-        sizes = [match_count, mismatch_count, missing_count]
-        colors = ['#8BC34A', '#FF5722', '#FFC107']
-
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
-        ax.axis('equal')
-        st.pyplot(fig)
-
+        
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
