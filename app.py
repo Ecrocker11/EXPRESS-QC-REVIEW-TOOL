@@ -259,65 +259,6 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
     normalized_pdf_text = normalize_string(pdf_text)
     normalized_contractor_pdf = normalize_string(contractor_name_pdf)
 
-def get_state_variants(state_name):
-    state_name = state_name.lower()
-    abbrev = state_abbrev.get(state_name, state_name)
-    full_name = next((k for k, v in state_abbrev.items() if v == state_name), state_name)
-    return {normalize_string(state_name), normalize_string(abbrev), normalize_string(full_name)}
-
-    state_abbrev = {
-    "alabama": "al",
-    "alaska": "ak",
-    "arizona": "az",
-    "arkansas": "ar",
-    "california": "ca",
-    "colorado": "co",
-    "connecticut": "ct",
-    "delaware": "de",
-    "florida": "fl",
-    "georgia": "ga",
-    "hawaii": "hi",
-    "idaho": "id",
-    "illinois": "il",
-    "indiana": "in",
-    "iowa": "ia",
-    "kansas": "ks",
-    "kentucky": "ky",
-    "louisiana": "la",
-    "maine": "me",
-    "maryland": "md",
-    "massachusetts": "ma",
-    "michigan": "mi",
-    "minnesota": "mn",
-    "mississippi": "ms",
-    "missouri": "mo",
-    "montana": "mt",
-    "nebraska": "ne",
-    "nevada": "nv",
-    "new hampshire": "nh",
-    "new jersey": "nj",
-    "new mexico": "nm",
-    "new york": "ny",
-    "north carolina": "nc",
-    "north dakota": "nd",
-    "ohio": "oh",
-    "oklahoma": "ok",
-    "oregon": "or",
-    "pennsylvania": "pa",
-    "rhode island": "ri",
-    "south carolina": "sc",
-    "south dakota": "sd",
-    "tennessee": "tn",
-    "texas": "tx",
-    "utah": "ut",
-    "vermont": "vt",
-    "virginia": "va",
-    "washington": "wa",
-    "west virginia": "wv",
-    "wisconsin": "wi",
-    "wyoming": "wy"
-}
-
     racking_aliases = {
         "chiko": "chiko",
         "ejot": "ejot",
@@ -429,27 +370,15 @@ def get_state_variants(state_name):
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Address":
-                components = [
-                    csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
-                    csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
-                    csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
-                ]
-                state = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", "")
-                state_variants = get_state_variants(state)
-                pdf_lines = pdf_text.splitlines()
-            
-                match_found = all(
-                    any(normalize_string(comp) in normalize_string(line) for line in pdf_lines)
-                    for comp in components if comp
-                )
-                state_match = any(
-                    any(variant in normalize_string(line) for variant in state_variants)
-                    for line in pdf_lines
-                )
-            
-                status = "✅" if match_found and state_match else f"❌ (PDF: Not Found)"
-                explanation = "Checked each address component separately, allowing state abbreviation/full name match"
-
+                address_dict = {
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+                }
+                match = contractor_address_match(address_dict, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
+                explanation = f"Checked each address component separately in PDF text"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -519,19 +448,9 @@ if csv_file and pdf_file:
             })
 
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-        # ✅ Fallback to avoid NoneType errors
-        if comparison is None:
-            comparison = []
-            match_count = mismatch_count = missing_count = 0
-            for item in comparison:
-                if item and isinstance(item, tuple) and len(item) == 5:
-                    label, field, value, status, explanation = item
-                    if status and status.startswith("✅"):
-                        match_count += 1
-                    elif status and status.startswith("❌"):
-                        mismatch_count += 1
-                    elif status and status.startswith("⚠️"):
-                        missing_count += 1
+        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
+        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
+        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
 
         field_categories = {
             "CONTRACTOR DETAILS": [
@@ -654,9 +573,6 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
-
-
-
 
 
 
