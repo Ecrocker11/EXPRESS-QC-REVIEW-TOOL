@@ -45,41 +45,51 @@ def contractor_name_match(value, pdf_text):
     return False, None
 
 def contractor_address_match(address_dict, pdf_text):
-    state_csv = normalize_state(address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""))
-    components = [
-        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
-        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
-        state_csv,
-        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+    # Pre-normalize CSV components
+    street = address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", "")
+    city = address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", "")
+    state_full = normalize_state(address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""))
+    zipc = address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+
+    # Normalize each component to normalized-string form
+    csv_components_norm = [
+        normalize_string(street),
+        normalize_string(city),
+        normalize_string(state_full),  # full state name
+        normalize_string(zipc),
     ]
+    csv_components_norm = [c for c in csv_components_norm if c]  # drop empties
+
     lines = pdf_text.splitlines()
-    for i in range(len(lines) - 3):
-        block = " ".join(lines[i:i+2])
-        block_normalized = normalize_string(block)
-        # Replace any state abbreviation in block with full name
-        for full, abbr in STATE_MAP.items():
-            if abbr in block_normalized:
-                block_normalized = block_normalized.replace(abbr, full)
-        if all(normalize_string(comp) in block_normalized for comp in components if comp):
+    for block in block_candidates(lines):
+        # Replace state abbrs with full names using boundaries, then normalize
+        block_with_full_states = normalize_states_in_text(block)
+        block_norm = normalize_string(block_with_full_states)
+
+        if all(comp in block_norm for comp in csv_components_norm):
             return True
     return False
 
 def project_address_match(address_dict, pdf_text):
-    state_csv = normalize_state(address_dict.get("Engineering_Project__c.Installation_State__c", ""))
-    components = [
-        address_dict.get("Engineering_Project__c.Installation_Street_Address_1__c", ""),
-        address_dict.get("Engineering_Project__c.Installation_City__c", ""),
-        state_csv,
-        address_dict.get("Engineering_Project__c.Installation_Zip_Code__c", "")
+    street = address_dict.get("Engineering_Project__c.Installation_Street_Address_1__c", "")
+    city = address_dict.get("Engineering_Project__c.Installation_City__c", "")
+    state_full = normalize_state(address_dict.get("Engineering_Project__c.Installation_State__c", ""))
+    zipc = address_dict.get("Engineering_Project__c.Installation_Zip_Code__c", "")
+
+    csv_components_norm = [
+        normalize_string(street),
+        normalize_string(city),
+        normalize_string(state_full),
+        normalize_string(zipc),
     ]
+    csv_components_norm = [c for c in csv_components_norm if c]
+
     lines = pdf_text.splitlines()
-    for i in range(len(lines) - 3):
-        block = " ".join(lines[i:i+2])
-        block_normalized = normalize_string(block)
-        for full, abbr in STATE_MAP.items():
-            if abbr in block_normalized:
-                block_normalized = block_normalized.replace(abbr, full)
-        if all(normalize_string(comp) in block_normalized for comp in components if comp):
+    for block in block_candidates(lines):
+        block_with_full_states = normalize_states_in_text(block)
+        block_norm = normalize_string(block_with_full_states)
+
+        if all(comp in block_norm for comp in csv_components_norm):
             return True
     return False
 
@@ -679,6 +689,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
