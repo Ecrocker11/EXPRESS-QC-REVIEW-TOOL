@@ -519,9 +519,11 @@ if csv_file and pdf_file:
             })
 
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
-        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
-        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
+        match_count = mismatch_count = missing_count = 0
+        if comparison:
+            match_count = sum(1 for _, _, _, status, _ in comparison if status and status.startswith("✅"))
+            mismatch_count = sum(1 for _, _, _, status, _ in comparison if status and status.startswith("❌"))
+            missing_count = sum(1 for _, _, _, status, _ in comparison if status and status.startswith("⚠️"))
 
         field_categories = {
             "CONTRACTOR DETAILS": [
@@ -644,6 +646,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
