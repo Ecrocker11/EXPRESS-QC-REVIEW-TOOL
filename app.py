@@ -519,11 +519,19 @@ if csv_file and pdf_file:
             })
 
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-        match_count = mismatch_count = missing_count = 0
-        if comparison:
-            match_count = sum(1 for _, _, _, status, _ in comparison if status and status.startswith("✅"))
-            mismatch_count = sum(1 for _, _, _, status, _ in comparison if status and status.startswith("❌"))
-            missing_count = sum(1 for _, _, _, status, _ in comparison if status and status.startswith("⚠️"))
+        # ✅ Fallback to avoid NoneType errors
+        if comparison is None:
+            comparison = []
+            match_count = mismatch_count = missing_count = 0
+            for item in comparison:
+                if item and isinstance(item, tuple) and len(item) == 5:
+                    label, field, value, status, explanation = item
+                    if status and status.startswith("✅"):
+                        match_count += 1
+                    elif status and status.startswith("❌"):
+                        mismatch_count += 1
+                    elif status and status.startswith("⚠️"):
+                        missing_count += 1
 
         field_categories = {
             "CONTRACTOR DETAILS": [
@@ -646,6 +654,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
