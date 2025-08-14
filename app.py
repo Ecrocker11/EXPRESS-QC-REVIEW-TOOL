@@ -450,61 +450,6 @@ if csv_file and pdf_file:
             ]
         }
 
-# ----------------------------
-# Tesla-specific Imp check (strict 'IMP' next-line first, then fallback)
-# ----------------------------
-inverter_mfr = str(csv_data.get("Engineering_Project__c.Inverter_Manufacturer__c", "")).strip().lower()
-if inverter_mfr == "tesla":
-    tesla_status = None
-
-    # 1) STRICT: look for line == 'IMP' (or 'IMPP') and take the next line as the value
-    strict_val, strict_context, strict_value_line = extract_module_imp_by_nextline(pdf_text)
-
-    if strict_val is not None:
-        # Report using strict method
-        if strict_val > tesla_imp_threshold:
-            tesla_status = f"❌ Module Imp = {strict_val} A (Above {tesla_imp_threshold:g})"
-            st.markdown(
-                f"<span style='color:red'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
-                unsafe_allow_html=True
-            )
-        else:
-            tesla_status = f"✅ Module Imp = {strict_val} A (OK)"
-            st.markdown(
-                f"<span style='color:green'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
-                unsafe_allow_html=True
-            )
-        # Show context lines to aid debugging
-        st.caption(f"- Review: `{strict_context}` → `{strict_value_line}`")
-
-    else:
-        # 2) FALLBACK: parse inline module spec line (e.g., 'VMP ... IMP 13.56 A VOC ...')
-        inline_val = extract_module_imp_from_pdf(pdf_text)
-        if inline_val is not None:
-            if inline_val > tesla_imp_threshold:
-                tesla_status = f"❌ Module Imp = {inline_val} A (Above {tesla_imp_threshold:g})"
-                st.markdown(
-                    f"<span style='color:red'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
-                    unsafe_allow_html=True
-                )
-            else:
-                tesla_status = f"✅ Module Imp = {inline_val} A (OK)"
-                st.markdown(
-                    f"<span style='color:green'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
-                    unsafe_allow_html=True
-                )
-            # Optional: show a helpful hint about inline source
-            st.caption("Used inline module spec (no isolated 'IMP' line found).")
-        else:
-            tesla_status = "⚠️ Could not extract module Imp (no isolated 'IMP' line and no inline module spec found)"
-            st.markdown(
-                f"<span style='color:orange'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
-                unsafe_allow_html=True
-            )
-        
-        # Add Tesla check to audit CSV
-        comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
-
         st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
         for category, fields in field_categories.items():
             st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
@@ -539,7 +484,62 @@ if inverter_mfr == "tesla":
                                 st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
                             else:
                                 st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
-
+                                
+                            # ----------------------------
+                            # Tesla-specific Imp check (strict 'IMP' next-line first, then fallback)
+                            # ----------------------------
+                            inverter_mfr = str(csv_data.get("Engineering_Project__c.Inverter_Manufacturer__c", "")).strip().lower()
+                            if inverter_mfr == "tesla":
+                                tesla_status = None
+                            
+                                # 1) STRICT: look for line == 'IMP' (or 'IMPP') and take the next line as the value
+                                strict_val, strict_context, strict_value_line = extract_module_imp_by_nextline(pdf_text)
+                            
+                                if strict_val is not None:
+                                    # Report using strict method
+                                    if strict_val > tesla_imp_threshold:
+                                        tesla_status = f"❌ Module Imp = {strict_val} A (Above {tesla_imp_threshold:g})"
+                                        st.markdown(
+                                            f"<span style='color:red'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
+                                            unsafe_allow_html=True
+                                        )
+                                    else:
+                                        tesla_status = f"✅ Module Imp = {strict_val} A (OK)"
+                                        st.markdown(
+                                            f"<span style='color:green'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
+                                            unsafe_allow_html=True
+                                        )
+                                    # Show context lines to aid debugging
+                                    st.caption(f"- Review: `{strict_context}` → `{strict_value_line}`")
+                            
+                                else:
+                                    # 2) FALLBACK: parse inline module spec line (e.g., 'VMP ... IMP 13.56 A VOC ...')
+                                    inline_val = extract_module_imp_from_pdf(pdf_text)
+                                    if inline_val is not None:
+                                        if inline_val > tesla_imp_threshold:
+                                            tesla_status = f"❌ Module Imp = {inline_val} A (Above {tesla_imp_threshold:g})"
+                                            st.markdown(
+                                                f"<span style='color:red'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
+                                                unsafe_allow_html=True
+                                            )
+                                        else:
+                                            tesla_status = f"✅ Module Imp = {inline_val} A (OK)"
+                                            st.markdown(
+                                                f"<span style='color:green'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
+                                                unsafe_allow_html=True
+                                            )
+                                        # Optional: show a helpful hint about inline source
+                                        st.caption("Used inline module spec (no isolated 'IMP' line found).")
+                                    else:
+                                        tesla_status = "⚠️ Could not extract module Imp (no isolated 'IMP' line and no inline module spec found)"
+                                        st.markdown(
+                                            f"<span style='color:orange'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
+                                            unsafe_allow_html=True
+                                        )
+                                    
+                                    # Add Tesla check to audit CSV
+                                    comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
+        
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
@@ -555,6 +555,7 @@ if inverter_mfr == "tesla":
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
