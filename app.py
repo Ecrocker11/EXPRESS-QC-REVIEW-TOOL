@@ -656,12 +656,14 @@ if csv_file and pdf_file:
                                 st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
 
                             dc_size_kw = extract_dc_size_kw(pdf_text)
+                            dc_check_status = None
                             if dc_size_kw is not None:
-                                status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
-                                st.markdown(f"<span style='color:#2196F3'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
-                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
+                                if abs(total_kw - dc_size_kw) < 0.01:
+                                    dc_check_status = "✅"
+                                else:
+                                    dc_check_status = f"❌ Calculated {total_kw:.3f} kW vs PDF {dc_size_kw:.3f} kW"
                             else:
-                                st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
+                                dc_check_status = "⚠️ DC Size not found in PDF"
                                 
                             # ----------------------------
                             # Tesla-specific Imp check (strict 'IMP' next-line first, then fallback)
@@ -723,6 +725,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
