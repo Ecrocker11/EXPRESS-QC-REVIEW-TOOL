@@ -510,7 +510,7 @@ if csv_file and pdf_file:
                                             unsafe_allow_html=True
                                         )
                                     # Show context lines to aid debugging
-                                    st.caption(f"- Review: `{strict_context}` → `{strict_value_line}`")
+                                    st.caption(f"Review: `{strict_context}` → `{strict_value_line}`")
                             
                                 else:
                                     # 2) FALLBACK: parse inline module spec line (e.g., 'VMP ... IMP 13.56 A VOC ...')
@@ -555,6 +555,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
