@@ -45,16 +45,41 @@ def contractor_name_match(value, pdf_text):
     return False, None
 
 def contractor_address_match(address_dict, pdf_text):
+    state_csv = normalize_state(address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""))
     components = [
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
-        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
+        state_csv,
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
     ]
     lines = pdf_text.splitlines()
     for i in range(len(lines) - 3):
-        block = " ".join(lines[i:i+2])  # check 2-line blocks
-        if all(normalize_string(comp) in normalize_string(block) for comp in components if comp):
+        block = " ".join(lines[i:i+2])
+        block_normalized = normalize_string(block)
+        # Replace any state abbreviation in block with full name
+        for full, abbr in STATE_MAP.items():
+            if abbr in block_normalized:
+                block_normalized = block_normalized.replace(abbr, full)
+        if all(normalize_string(comp) in block_normalized for comp in components if comp):
+            return True
+    return False
+
+def project_address_match(address_dict, pdf_text):
+    state_csv = normalize_state(address_dict.get("Engineering_Project__c.Installation_State__c", ""))
+    components = [
+        address_dict.get("Engineering_Project__c.Installation_Street_Address_1__c", ""),
+        address_dict.get("Engineering_Project__c.Installation_City__c", ""),
+        state_csv,
+        address_dict.get("Engineering_Project__c.Installation_Zip_Code__c", "")
+    ]
+    lines = pdf_text.splitlines()
+    for i in range(len(lines) - 3):
+        block = " ".join(lines[i:i+2])
+        block_normalized = normalize_string(block)
+        for full, abbr in STATE_MAP.items():
+            if abbr in block_normalized:
+                block_normalized = block_normalized.replace(abbr, full)
+        if all(normalize_string(comp) in block_normalized for comp in components if comp):
             return True
     return False
 
@@ -253,6 +278,32 @@ def get_line_with_keyword(text, keyword):
 def apply_alias(value, alias_dict):
     normalized_value = normalize_string(value)
     return alias_dict.get(normalized_value, normalized_value)
+    
+# State mapping dictionary
+STATE_MAP = {
+    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar", "california": "ca",
+    "colorado": "co", "connecticut": "ct", "delaware": "de", "florida": "fl", "georgia": "ga",
+    "hawaii": "hi", "idaho": "id", "illinois": "il", "indiana": "in", "iowa": "ia",
+    "kansas": "ks", "kentucky": "ky", "louisiana": "la", "maine": "me", "maryland": "md",
+    "massachusetts": "ma", "michigan": "mi", "minnesota": "mn", "mississippi": "ms",
+    "missouri": "mo", "montana": "mt", "nebraska": "ne", "nevada": "nv", "new hampshire": "nh",
+    "new jersey": "nj", "new mexico": "nm", "new york": "ny", "north carolina": "nc",
+    "north dakota": "nd", "ohio": "oh", "oklahoma": "ok", "oregon": "or", "pennsylvania": "pa",
+    "rhode island": "ri", "south carolina": "sc", "south dakota": "sd", "tennessee": "tn",
+    "texas": "tx", "utah": "ut", "vermont": "vt", "virginia": "va", "washington": "wa",
+    "west virginia": "wv", "wisconsin": "wi", "wyoming": "wy"
+}
+
+def normalize_state(state_str):
+    s = str(state_str).strip().lower()
+    if not s:
+        return ""
+    if s in STATE_MAP:
+        return s  # already full name
+    for full, abbr in STATE_MAP.items():
+        if s == abbr:
+            return full
+    return s
 
 def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf):
     results = []
@@ -378,7 +429,18 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 }
                 match = contractor_address_match(address_dict, pdf_text)
                 status = "✅" if match else f"❌ (PDF: Not Found)"
-                explanation = f"Checked each address component separately in PDF text"
+                explanation = "Checked each address component with state normalization"
+            
+            elif label == "Project Address":
+                address_dict = {
+                    "Engineering_Project__c.Installation_Street_Address_1__c": csv_data.get("Engineering_Project__c.Installation_Street_Address_1__c", ""),
+                    "Engineering_Project__c.Installation_City__c": csv_data.get("Engineering_Project__c.Installation_City__c", ""),
+                    "Engineering_Project__c.Installation_State__c": csv_data.get("Engineering_Project__c.Installation_State__c", ""),
+                    "Engineering_Project__c.Installation_Zip_Code__c": csv_data.get("Engineering_Project__c.Installation_Zip_Code__c", "")
+                }
+                match = project_address_match(address_dict, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
+                explanation = "Checked each address component with state normalization"
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -573,6 +635,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
