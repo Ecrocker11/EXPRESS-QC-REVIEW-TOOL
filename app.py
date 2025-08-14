@@ -53,7 +53,7 @@ def contractor_address_match(address_dict, pdf_text):
     ]
     lines = pdf_text.splitlines()
     for i in range(len(lines) - 3):
-        block = " ".join(lines[i:i+6])  # check 2-line blocks
+        block = " ".join(lines[i:i+2])  # check 2-line blocks
         if all(normalize_string(comp) in normalize_string(block) for comp in components if comp):
             return True
     return False
@@ -573,6 +573,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
