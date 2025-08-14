@@ -563,6 +563,42 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
+# --- TOP HIGHLIGHT SECTION: Mismatches + Missing ---
+# (Place after computing `comparison` and counts, before rendering categories)
+
+# Pull out mismatches (❌) and missing (⚠️) from the comparison list
+mismatches = [item for item in comparison if item[3].startswith("❌")]
+missings   = [item for item in comparison if item[3].startswith("⚠️")]
+
+if mismatches or missings:
+    st.markdown("<h2 style='margin-top:0'>🔎 Review First</h2>", unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    c1.metric("Mismatches", len(mismatches))
+    c2.metric("Missing fields", len(missings))
+
+    # Optional: expanders to keep the top compact
+    if mismatches:
+        with st.expander(f"🚨 Mismatches ({len(mismatches)})", expanded=True):
+            for label, field, value, status, explanation in mismatches:
+                st.markdown(
+                    f"<span style='color:#d32f2f'><strong>{label}:</strong> "
+                    f"`{value}` → {status}</span>",
+                    unsafe_allow_html=True
+                )
+                st.caption(explanation)
+
+    if missings:
+        with st.expander(f"⚠️ Missing ({len(missings)})", expanded=True):
+            for label, field, value, status, explanation in missings:
+                st.markdown(
+                    f"<span style='color:#f57c00'><strong>{label}:</strong> "
+                    f"`{value}` → {status}</span>",
+                    unsafe_allow_html=True
+                )
+                st.caption(explanation)
+
+
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
@@ -689,6 +725,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
