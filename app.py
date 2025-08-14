@@ -14,9 +14,6 @@ st.title("🔍 EXPRESS QC REVIEW TOOL")
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
-with st.expander("Options"):
-    tesla_imp_threshold = st.number_input("TESLA Imp threshold (A)", min_value=0.0, value=13.0, step=0.1)
-
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
@@ -666,8 +663,8 @@ if csv_file and pdf_file:
                             
                                 if strict_val is not None:
                                     # Report using strict method
-                                    if strict_val > tesla_imp_threshold:
-                                        tesla_status = f"❌ Module Imp = {strict_val} A (Above {tesla_imp_threshold:g})"
+                                    if strict_val > 13:
+                                        tesla_status = f"❌ Module Imp = {strict_val} A (Above {13:g})"
                                         st.markdown(
                                             f"<span style='color:red'><strong>TESLA MCI CHECK:</strong> {tesla_status}</span>",
                                             unsafe_allow_html=True
@@ -685,8 +682,8 @@ if csv_file and pdf_file:
                                     # 2) FALLBACK: parse inline module spec line (e.g., 'VMP ... IMP 13.56 A VOC ...')
                                     inline_val = extract_module_imp_from_pdf(pdf_text)
                                     if inline_val is not None:
-                                        if inline_val > tesla_imp_threshold:
-                                            tesla_status = f"❌ Module Imp = {inline_val} A (Above {tesla_imp_threshold:g})"
+                                        if inline_val > 13:
+                                            tesla_status = f"❌ Module Imp = {inline_val} A (Above {13:g})"
                                             st.markdown(
                                                 f"<span style='color:red'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
                                                 unsafe_allow_html=True
@@ -707,7 +704,7 @@ if csv_file and pdf_file:
                                         )
                                     
                                     # Add Tesla check to audit CSV
-                                    comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
+                                    comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {13:g} A"))
         
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
@@ -724,6 +721,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
