@@ -571,9 +571,23 @@ if csv_file and pdf_file:
         # Pull out mismatches (❌) and missing (⚠️) from the comparison list
         mismatches = [item for item in comparison if item[3].startswith("❌")]
         missings   = [item for item in comparison if item[3].startswith("⚠️")]
+
+        st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         
+        total = match_count + mismatch_count + missing_count
+        if total == 0:
+            st.write("No data to summarize.")
+        else:
+            pass_pct = (match_count / total) * 100
+            fail_pct = (mismatch_count / total) * 100
+            missing_pct = (missing_count / total) * 100
+        
+            st.markdown(f"<span style='color:#8BC34A'><strong>PASS:</strong></span> {match_count} ({pass_pct:.1f}%)", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#FF5722'><strong>FAIL:</strong></span> {mismatch_count} ({fail_pct:.1f}%)", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#FFC107'><strong>MISSING:</strong></span> {missing_count} ({missing_pct:.1f}%)", unsafe_allow_html=True)        
+
         if mismatches or missings:
-            st.markdown("<h2 style='margin-top:0'>🔎 Review First</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='margin-top:0'>Summary</h2>", unsafe_allow_html=True)
         
             c1, c2 = st.columns(2)
             c1.metric("Mismatches", len(mismatches))
@@ -706,25 +720,12 @@ if csv_file and pdf_file:
                                     # Add Tesla check to audit CSV
                                     comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {13:g} A"))
         
-        st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
-        
-        total = match_count + mismatch_count + missing_count
-        if total == 0:
-            st.write("No data to summarize.")
-        else:
-            pass_pct = (match_count / total) * 100
-            fail_pct = (mismatch_count / total) * 100
-            missing_pct = (missing_count / total) * 100
-        
-            st.markdown(f"<span style='color:#8BC34A'><strong>PASS:</strong></span> {match_count} ({pass_pct:.1f}%)", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#FF5722'><strong>FAIL:</strong></span> {mismatch_count} ({fail_pct:.1f}%)", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#FFC107'><strong>MISSING:</strong></span> {missing_count} ({missing_pct:.1f}%)", unsafe_allow_html=True)
-
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
