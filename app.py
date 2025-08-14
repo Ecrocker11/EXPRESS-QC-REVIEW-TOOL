@@ -582,9 +582,7 @@ if csv_file and pdf_file:
             fail_pct = (mismatch_count / total) * 100
             missing_pct = (missing_count / total) * 100
         
-            st.markdown(f"<span style='color:#8BC34A'><strong>PASS:</strong></span> {match_count} ({pass_pct:.1f}%)", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#FF5722'><strong>FAIL:</strong></span> {mismatch_count} ({fail_pct:.1f}%)", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#FFC107'><strong>MISSING:</strong></span> {missing_count} ({missing_pct:.1f}%)", unsafe_allow_html=True)        
+            st.markdown(f"<span style='color:#8BC34A'><strong>PASS:</strong></span> {match_count} ({pass_pct:.1f}%)", unsafe_allow_html=True)            st.markdown(f"<span style='color:#FF5722'><strong>FAIL:</strong></span> {mismatch_count} ({fail_pct:.1f}%)", unsafe_allow_html=True)            st.markdown(f"<span style='color:#FFC107'><strong>MISSING:</strong></span> {missing_count} ({missing_pct:.1f}%)", unsafe_allow_html=True)        
 
         if mismatches or missings:
         
@@ -724,6 +722,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
