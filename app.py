@@ -37,10 +37,10 @@ def compute_extra_checks(csv_data, pdf_text):
     dc_pdf = extract_dc_size_kw(pdf_text)
 
     if total_kw is not None and dc_pdf is not None:
-        dc_status = "✅" if abs(total_kw - dc_pdf) < 0.01 else f"❌ Calculated {total_kw:.3f} kW vs PDF {dc_pdf:.3f} kW"
+        dc_status = "✅" if abs(total_kw - dc_pdf) < 0.01 else f"❌ Expected DC System Size (CSV) {total_kw:.3f} kW vs PDF {dc_pdf:.3f} kW"
         extra.append((
             "DC System Size Check", "-", "-", dc_status,
-            f"Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_pdf:.3f} kW`"
+            f"Expected DC System Size (CSV) `{total_kw:.3f} kW` vs PDF `DC Size: {dc_pdf:.3f} kW`"
         ))
     elif total_kw is not None and dc_pdf is None:
         extra.append((
@@ -790,7 +790,7 @@ if csv_file and pdf_file:
                                     if 'status' in locals() and status.startswith("❌"):  # from DC size comparison
                                         mismatches.append((
                                             "DC System Size Check", "-", "-", status,
-                                            f"Calculated vs PDF mismatch: {total_kw:.3f} kW vs {dc_size_kw:.3f} kW"
+                                            f"Expected DC System Size (CSV) vs PDF mismatch: {total_kw:.3f} kW vs {dc_size_kw:.3f} kW"
                                         ))
                                     
                                     # --- Add Tesla MCI Check to summary if it failed ---
@@ -806,6 +806,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
