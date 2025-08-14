@@ -538,7 +538,7 @@ if csv_file and pdf_file:
                         )
             
                 # Add Tesla check to audit CSV
-                comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", tesla_status, f"MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
+                comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
 
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
@@ -555,6 +555,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
