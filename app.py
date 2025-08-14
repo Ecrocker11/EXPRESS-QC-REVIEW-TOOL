@@ -13,6 +13,70 @@ st.title("🔍 EXPRESS QC REVIEW TOOL")
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
+def compute_extra_checks(csv_data, pdf_text):
+    """
+    Build a list of extra audit rows (label, field, value, status, explanation)
+    for DC System Size and Tesla MCI checks. These rows are designed to plug
+    into your existing summary logic.
+    """
+    extra = []
+
+    # ---- DC System Size Check ----
+    module_part = csv_data.get("Engineering_Project__c.Module_Part_Number__c", "")
+    module_qty_str = csv_data.get("Engineering_Project__c.Module_Quantity__c", "")
+    watt = extract_module_wattage(module_part)
+    try:
+        module_qty_int = int(str(module_qty_str).lstrip("0")) if str(module_qty_str).isdigit() else None
+    except Exception:
+        module_qty_int = None
+
+    total_kw = None
+    if watt and module_qty_int:
+        total_kw = (watt * module_qty_int) / 1000.0
+
+    dc_pdf = extract_dc_size_kw(pdf_text)
+
+    if total_kw is not None and dc_pdf is not None:
+        dc_status = "✅" if abs(total_kw - dc_pdf) < 0.01 else f"❌ Calculated {total_kw:.3f} kW vs PDF {dc_pdf:.3f} kW"
+        extra.append((
+            "DC System Size Check", "-", "-", dc_status,
+            f"Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_pdf:.3f} kW`"
+        ))
+    elif total_kw is not None and dc_pdf is None:
+        extra.append((
+            "DC System Size Check", "-", "-", "⚠️ DC Size not found in PDF",
+            "No 'DC SIZE' pattern found (e.g., 'DC SIZE: 7.000 KW')."
+        ))
+    # else: not enough info to compute, skip
+
+    # ---- TESLA MCI CHECK ----
+    inverter_mfr = str(csv_data.get("Engineering_Project__c.Inverter_Manufacturer__c", "")).strip().lower()
+    if inverter_mfr == "tesla":
+        strict_val, strict_context, strict_value_line = extract_module_imp_by_nextline(pdf_text)
+        imp_val = strict_val
+        used_strict = True
+        if imp_val is None:
+            used_strict = False
+            imp_val = extract_module_imp_from_pdf(pdf_text)
+
+        if imp_val is not None:
+            if imp_val > 13:
+                tesla_status = f"❌ Module Imp = {imp_val:g} A (Above 13)"
+            else:
+                tesla_status = f"✅ Module Imp = {imp_val:g} A (OK)"
+            explain_src = "Strict 'IMP' next-line" if used_strict else "Inline module spec"
+            extra.append((
+                "TESLA MCI CHECK", "Module Imp (A)", "-", tesla_status,
+                f"{explain_src}. MCI allowable module Imp: 13 A."
+            ))
+        else:
+            extra.append((
+                "TESLA MCI CHECK", "Module Imp (A)", "-", "⚠️ Could not extract module Imp",
+                "No isolated 'IMP' line and no acceptable inline module spec found."
+            ))
+
+    return extra
+
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
@@ -560,16 +624,21 @@ if csv_file and pdf_file:
             })
 
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
-        match_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("✅"))
-        mismatch_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("❌"))
-        missing_count = sum(1 for _, _, _, status, _ in comparison if status.startswith("⚠️"))
-
-        # --- TOP HIGHLIGHT SECTION: Mismatches + Missing ---
-        # (Place after computing `comparison` and counts, before rendering categories)
         
-        # Pull out mismatches (❌) and missing (⚠️) from the comparison list
-        mismatches = [item for item in comparison if item[3].startswith("❌")]
-        missings   = [item for item in comparison if item[3].startswith("⚠️")]
+        # >>> NEW: compute extra checks BEFORE the summary <<<
+        extra_checks = compute_extra_checks(csv_data, pdf_text)
+        
+        # Combine for summary + counts
+        all_items = comparison + extra_checks
+        
+        match_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("✅"))
+        mismatch_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("❌"))
+        missing_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("⚠️"))
+        
+        # Build lists used by the expanders from the combined list
+        mismatches = [item for item in all_items if str(item[3]).startswith("❌")]
+        missings   = [item for item in all_items if str(item[3]).startswith("⚠️")]
+
 
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         
@@ -737,4 +806,5 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
