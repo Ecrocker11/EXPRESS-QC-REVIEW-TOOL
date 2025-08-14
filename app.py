@@ -598,7 +598,7 @@ if csv_file and pdf_file:
                         st.caption(explanation)
         
             if missings:
-                with st.expander(f"⚠️ Missing ({len(missings)})", expanded=True):
+                with st.expander(f"⚠️ Missing ({len(missings)})", expanded=False):
                     for label, field, value, status, explanation in missings:
                         st.markdown(
                             f"<span style='color:#f57c00'><strong>{label}:</strong> "
@@ -718,6 +718,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
