@@ -12,6 +12,9 @@ st.title("🔍 EXPRESS QC REVIEW TOOL")
 csv_file = st.file_uploader("UPLOAD ENGINEERING PROJECT CSV", type=["csv"])
 pdf_file = st.file_uploader("UPLOAD PLAN SET PDF", type=["pdf"])
 
+with st.expander("Options"):
+    tesla_imp_threshold = st.number_input("TESLA Imp threshold (A)", min_value=0.0, value=13.0, step=0.1)
+
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
@@ -465,6 +468,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
