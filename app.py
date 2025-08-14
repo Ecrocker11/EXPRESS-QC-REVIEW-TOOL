@@ -45,11 +45,10 @@ def contractor_name_match(value, pdf_text):
     return False, None
 
 def contractor_address_match(address_dict, pdf_text):
-    state_csv = normalize_state(address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""))
     components = [
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
-        state_csv,
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
     ]
     lines = pdf_text.splitlines()
@@ -259,34 +258,6 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
     results = []
     normalized_pdf_text = normalize_string(pdf_text)
     normalized_contractor_pdf = normalize_string(contractor_name_pdf)
-
-# State mapping dictionary
-STATE_MAP = {
-    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar", "california": "ca",
-    "colorado": "co", "connecticut": "ct", "delaware": "de", "florida": "fl", "georgia": "ga",
-    "hawaii": "hi", "idaho": "id", "illinois": "il", "indiana": "in", "iowa": "ia",
-    "kansas": "ks", "kentucky": "ky", "louisiana": "la", "maine": "me", "maryland": "md",
-    "massachusetts": "ma", "michigan": "mi", "minnesota": "mn", "mississippi": "ms",
-    "missouri": "mo", "montana": "mt", "nebraska": "ne", "nevada": "nv", "new hampshire": "nh",
-    "new jersey": "nj", "new mexico": "nm", "new york": "ny", "north carolina": "nc",
-    "north dakota": "nd", "ohio": "oh", "oklahoma": "ok", "oregon": "or", "pennsylvania": "pa",
-    "rhode island": "ri", "south carolina": "sc", "south dakota": "sd", "tennessee": "tn",
-    "texas": "tx", "utah": "ut", "vermont": "vt", "virginia": "va", "washington": "wa",
-    "west virginia": "wv", "wisconsin": "wi", "wyoming": "wy"
-}
-
-def normalize_state(state_str):
-    s = str(state_str).strip().lower()
-    if not s:
-        return ""
-    # If it's already a full name
-    if s in STATE_MAP:
-        return s
-    # If it's an abbreviation
-    for full, abbr in STATE_MAP.items():
-        if s == abbr:
-            return full
-    return s  # fallback if not found
 
     racking_aliases = {
         "chiko": "chiko",
@@ -602,8 +573,6 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
-
-
 
 
 
