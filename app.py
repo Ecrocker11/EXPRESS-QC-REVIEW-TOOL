@@ -46,12 +46,12 @@ def contractor_name_match(value, pdf_text):
 
 def contractor_address_match(address_dict, pdf_text):
     state_csv = normalize_state(address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""))
-components = [
-    address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
-    address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
-    state_csv,
-    address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
-]
+    components = [
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
+        state_csv,
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+    ]
     lines = pdf_text.splitlines()
     for i in range(len(lines) - 3):
         block = " ".join(lines[i:i+2])  # check 2-line blocks
@@ -602,6 +602,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
