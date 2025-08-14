@@ -450,9 +450,6 @@ if csv_file and pdf_file:
             ]
         }
 
-        # Add Tesla check to audit CSV
-        comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
-
         st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
         for category, fields in field_categories.items():
             st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
@@ -539,7 +536,10 @@ if csv_file and pdf_file:
                             f"<span style='color:orange'><strong>TESLA CHECK:</strong> {tesla_status}</span>",
                             unsafe_allow_html=True
                         )
-            
+                    
+                    # Add Tesla check to audit CSV
+                    comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
+
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
