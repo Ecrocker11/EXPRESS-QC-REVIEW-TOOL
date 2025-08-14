@@ -61,6 +61,91 @@ def extract_dc_size_kw(pdf_text):
             return None
     return None
 
+def extract_module_imp_by_nextline(pdf_text: str):
+    """
+    Strict mode: find a line that contains only 'IMP' or 'IMPP' (ignoring punctuation/whitespace),
+    then take the next non-empty line and parse the first number as the value (amps).
+    Returns (value_float, context_line, value_line) or (None, None, None).
+    """
+    lines = [ln.rstrip() for ln in pdf_text.splitlines()]  # keep original cases/spaces for context
+    # Precompute a normalized version for matching the 'IMP'-only line
+    norm = []
+    for ln in lines:
+        # remove punctuation and spaces, keep letters/digits
+        comp = re.sub(r'[^a-z0-9]', '', ln.lower())
+        norm.append(comp)
+
+    for i, comp in enumerate(norm):
+        if comp in ("imp", "impp"):  # allow 'IMPP' as some datasheets use Impp
+            # find the next non-empty line
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            if j < len(lines):
+                value_line = lines[j].strip()
+                # parse first numeric like 13 or 13.56 possibly followed by 'A'
+                m = re.search(r'([0-9]+(?:\.[0-9]+)?)', value_line.replace(',', ''))
+                if m:
+                    try:
+                        return float(m.group(1)), lines[i], value_line
+                    except Exception:
+                        pass
+    return None, None, None
+
+def extract_module_imp_from_pdf(pdf_text: str) -> Optional[float]:
+    """
+    Prefer the module spec line (e.g., 'VMP 32.1 V IMP 13.56 A VOC 38.6 V ISC 14.32 A').
+    Avoid inverter/MPPT lines like 'MAX CURRENT PER MPPT (IMP) 13A'.
+    Also accepts 'Impp' (datasheet tables) as a synonym.
+    """
+    lines = [ln.strip() for ln in pdf_text.splitlines() if ln.strip()]
+    # Candidate lines: must contain IMP/IMPP and at least one of VMP/VOC/ISC (module spec context)
+    module_ctx_candidates = []
+    for ln in lines:
+        lower = ln.lower()
+        if ("imp" in lower or "impp" in lower) and any(k in lower for k in ("vmp", "voc", "isc")):
+            # exclude obvious inverter/MPPT/inverter spec lines
+            if "mppt" in lower or "max current per mppt" in lower or "inverter specifications" in lower:
+                continue
+            module_ctx_candidates.append(ln)
+
+    # Search in high-confidence candidates first
+    imp_pattern = re.compile(r'(?i)\bimpp?\b[^0-9\-]{0,20}([0-9]+(?:\.[0-9]+)?)')
+    for ln in module_ctx_candidates:
+        m = imp_pattern.search(ln)
+        if m:
+            try:
+                return float(m.group(1))
+            except Exception:
+                pass
+
+    # Secondary strategy: search the block after 'SOLAR MODULE SPECIFICATIONS'
+    block = ""
+    for i, ln in enumerate(lines):
+        if "solar module specifications" in ln.lower():
+            block = "\n".join(lines[i:i+6])  # look a few lines forward
+            break
+    if block:
+        m = imp_pattern.search(block)
+        if m:
+            try:
+                return float(m.group(1))
+            except Exception:
+                pass
+
+    # Fallback: any IMP line, but explicitly skip inverter/MPPT lines
+    for ln in lines:
+        lower = ln.lower()
+        if ("imp" in lower or "impp" in lower) and not ("mppt" in lower or "max current per mppt" in lower or "inverter" in lower):
+            m = imp_pattern.search(ln)
+            if m:
+                try:
+                    return float(m.group(1))
+                except Exception:
+                    pass
+
+    return None
+
 def extract_pdf_line_values(doc, contractor_name_csv):
     first_page_text = doc[0].get_text()
     third_page_text = doc[2].get_text() if len(doc) >= 3 else ""
@@ -468,6 +553,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
