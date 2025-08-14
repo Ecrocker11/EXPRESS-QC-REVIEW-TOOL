@@ -719,15 +719,15 @@ if csv_file and pdf_file:
                                 module_qty_int = int(str(module_qty).lstrip("0")) if str(module_qty).isdigit() else None
                                 if extracted_wattage and module_qty_int:
                                     total_kw = (extracted_wattage * module_qty_int) / 1000
-                                    st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
+                                    st.markdown(f"<span style='color:#2196F3'><strong>Expected DC System Size (CSV):</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
                             except:
-                                st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
+                                st.markdown(f"<span style='color:#FF9800'><strong>Expected DC System Size (CSV):</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
 
                             dc_size_kw = extract_dc_size_kw(pdf_text)
                             if dc_size_kw is not None:
                                 status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
-                                st.markdown(f"<span style='color:red'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
-                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
+                                st.markdown(f"<span style='color:#2196F3'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
+                                st.caption(f"Compared: Expected DC System Size (CSV) `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
                             else:
                                 st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
                                 
@@ -806,6 +806,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
