@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
@@ -656,14 +655,12 @@ if csv_file and pdf_file:
                                 st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
 
                             dc_size_kw = extract_dc_size_kw(pdf_text)
-                            dc_check_status = None
                             if dc_size_kw is not None:
-                                if abs(total_kw - dc_size_kw) < 0.01:
-                                    dc_check_status = "✅"
-                                else:
-                                    dc_check_status = f"❌ Calculated {total_kw:.3f} kW vs PDF {dc_size_kw:.3f} kW"
+                                status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
+                                st.markdown(f"<span style='color:#2196F3'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
+                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
                             else:
-                                dc_check_status = "⚠️ DC Size not found in PDF"
+                                st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
                                 
                             # ----------------------------
                             # Tesla-specific Imp check (strict 'IMP' next-line first, then fallback)
@@ -719,37 +716,25 @@ if csv_file and pdf_file:
                                     
                                     # Add Tesla check to audit CSV
                                     comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {13:g} A"))
+                                    
+                                    # --- Add DC System Size Check to summary if it failed ---
+                                    if 'status' in locals() and status.startswith("❌"):  # from DC size comparison
+                                        mismatches.append((
+                                            "DC System Size Check", "-", "-", status,
+                                            f"Calculated vs PDF mismatch: {total_kw:.3f} kW vs {dc_size_kw:.3f} kW"
+                                        ))
+                                    
+                                    # --- Add Tesla MCI Check to summary if it failed ---
+                                    if tesla_status and tesla_status.startswith("❌"):
+                                        mismatches.append((
+                                            "TESLA MCI CHECK", "-", "-", tesla_status,
+                                            "Module Imp exceeds Tesla limit (13 A)"
+                                        ))
+
         
         st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
