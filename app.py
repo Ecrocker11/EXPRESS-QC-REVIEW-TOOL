@@ -707,20 +707,21 @@ if csv_file and pdf_file:
                                     comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {13:g} A"))
         
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
-
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
         colors = ['#8BC34A', '#FF5722', '#FFC107']
-        
+
         fig, ax = plt.subplots()
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
         ax.axis('equal')
         st.pyplot(fig)
 
+        st.download_button("Download PDF Text", pdf_text, "pdf_text.txt", "text/plain")
 
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
