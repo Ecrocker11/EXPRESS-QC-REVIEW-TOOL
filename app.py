@@ -35,6 +35,27 @@ def extract_pdf_text(doc):
         pdf_text += page.get_text()
     return pdf_text
 
+def contractor_name_match(value, pdf_text):
+    normalized_value = normalize_string(value)
+    for line in pdf_text.splitlines():
+        if normalized_value in normalize_string(line):
+            return True, line.strip()
+    return False, None
+
+def contractor_address_match(address_dict, pdf_text):
+    components = [
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
+        address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+    ]
+    pdf_lines = pdf_text.splitlines()
+    match_found = all(
+        any(normalize_string(comp) in normalize_string(line) for line in pdf_lines)
+        for comp in components if comp
+    )
+    return match_found
+
 def extract_module_wattage(part_number):
     part_number = str(part_number).upper()
     # Find all 3 or 4-digit numbers
@@ -293,10 +314,11 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                     status = f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Name":
-                pdf_value = contractor_name_pdf
-                normalized_value = normalize_string(value)
-                status = "✅" if normalized_value in normalized_contractor_pdf else f"❌ (PDF: {pdf_value})"
-                explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
+                match, matched_line = contractor_name_match(value, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
+                explanation = f"Looked for normalized name '{value}' in PDF text"
+                if matched_line:
+                    explanation += f" | Matched Line: '{matched_line}'"
             elif label == "Contractor Phone Number":
                 normalized_value = normalize_phone_number(value)
                 normalized_pdf_value = normalize_phone_number(pdf_text)
@@ -346,21 +368,15 @@ def compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter
                 status = "✅" if match_found else f"❌ (PDF: {pdf_value})"
                 explanation = f"Compared: CSV='{value}' vs PDF='{pdf_value}'"
             elif label == "Contractor Address":
-                street1 = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", "")
-                city = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", "")
-                state = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", "")
-                zip_code = csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
-            
-                pdf_lines = pdf_text.splitlines()
-                match_found = all(
-                    any(normalize_string(part) in normalize_string(line) for line in pdf_lines)
-                    for part in [street1, city, state, zip_code]
-                    if part
-                )
-            
-                status = "✅" if match_found else f"❌ (PDF: Not Found)"
+                address_dict = {
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Line_1__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_City__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
+                    "Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c": csv_data.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
+                }
+                match = contractor_address_match(address_dict, pdf_text)
+                status = "✅" if match else f"❌ (PDF: Not Found)"
                 explanation = f"Checked each address component separately in PDF text"
-
             elif is_numeric(value):
                 found = str(value) in pdf_text
                 status = "✅" if found else f"❌ (PDF: Not Found)"
@@ -555,42 +571,4 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
