@@ -6,6 +6,8 @@ import re
 import io
 import matplotlib.pyplot as plt
 import traceback
+from typing import Optional
+
 
 st.title("🔍 EXPRESS QC REVIEW TOOL")
 
@@ -553,6 +555,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
