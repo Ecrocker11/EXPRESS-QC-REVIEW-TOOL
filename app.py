@@ -383,7 +383,7 @@ if csv_file and pdf_file:
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             contractor_name_csv = csv_data.get("Engineering_Project__c.Customer__r.Name", "")
             module_qty_pdf, inverter_qty_pdf, contractor_name_pdf, third_page_text = extract_pdf_line_values(doc, contractor_name_csv)
-            pdf_text = extract_pdf_text(doc[:1]) + third_page_text
+            pdf_text = extract_pdf_text(doc[:1]) + third_page_text + doc[3].get_text()
 
         compiled_project_address = compile_project_address(csv_data)
         csv_data["Compiled_Project_Address"] = compiled_project_address
@@ -555,6 +555,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
