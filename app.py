@@ -450,41 +450,6 @@ if csv_file and pdf_file:
             ]
         }
 
-        st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
-        for category, fields in field_categories.items():
-            st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
-            for label, field, value, status, explanation in comparison:
-                if label in fields:
-                    if status.startswith("❌"):
-                        st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-                    elif status.startswith("⚠️"):
-                        st.markdown(f"<span style='color:orange'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
-                    st.caption(explanation)
-
-                    if label == "Module Part Number":
-                        extracted_wattage = extract_module_wattage(value)
-                        if extracted_wattage:
-                            st.markdown(f"<span style='color:#2196F3'><strong>Extracted Module Wattage:</strong> `{extracted_wattage}`</span>", unsafe_allow_html=True)
-                           
-                            module_qty = csv_data.get("Engineering_Project__c.Module_Quantity__c", "")
-                            try:
-                                module_qty_int = int(str(module_qty).lstrip("0")) if str(module_qty).isdigit() else None
-                                if extracted_wattage and module_qty_int:
-                                    total_kw = (extracted_wattage * module_qty_int) / 1000
-                                    st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
-                            except:
-                                st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
-
-                            dc_size_kw = extract_dc_size_kw(pdf_text)
-                            if dc_size_kw is not None:
-                                status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
-                                st.markdown(f"<span style='color:#2196F3'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
-                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
-                            else:
-                                st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
-
             # ----------------------------
             # Tesla-specific Imp check (strict 'IMP' next-line first, then fallback)
             # ----------------------------
@@ -540,6 +505,41 @@ if csv_file and pdf_file:
                     # Add Tesla check to audit CSV
                     comparison.append(("TESLA MCI CHECK", "Module Imp (A)", "-", "-", f"{tesla_status} | MCI ALLOWABLE MODULE IMP: {tesla_imp_threshold:g} A"))
 
+        st.markdown("<h2 style='font-size:32px;'>COMPARISON RESULTS</h2>", unsafe_allow_html=True)
+        for category, fields in field_categories.items():
+            st.markdown(f"<h3 style='font-size:24px;'>{category}</h3>", unsafe_allow_html=True)
+            for label, field, value, status, explanation in comparison:
+                if label in fields:
+                    if status.startswith("❌"):
+                        st.markdown(f"<span style='color:red'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    elif status.startswith("⚠️"):
+                        st.markdown(f"<span style='color:orange'><strong>{label}:</strong> `{value}` → {status}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<strong>{label}:</strong> `{value}` → {status}", unsafe_allow_html=True)
+                    st.caption(explanation)
+
+                    if label == "Module Part Number":
+                        extracted_wattage = extract_module_wattage(value)
+                        if extracted_wattage:
+                            st.markdown(f"<span style='color:#2196F3'><strong>Extracted Module Wattage:</strong> `{extracted_wattage}`</span>", unsafe_allow_html=True)
+                           
+                            module_qty = csv_data.get("Engineering_Project__c.Module_Quantity__c", "")
+                            try:
+                                module_qty_int = int(str(module_qty).lstrip("0")) if str(module_qty).isdigit() else None
+                                if extracted_wattage and module_qty_int:
+                                    total_kw = (extracted_wattage * module_qty_int) / 1000
+                                    st.markdown(f"<span style='color:#2196F3'><strong>Total System Size:</strong> `{total_kw:.3f} kW`</span>", unsafe_allow_html=True)
+                            except:
+                                st.markdown(f"<span style='color:#FF9800'><strong>Total System Size:</strong> ⚠️ Unable to calculate</span>", unsafe_allow_html=True)
+
+                            dc_size_kw = extract_dc_size_kw(pdf_text)
+                            if dc_size_kw is not None:
+                                status = "✅" if abs(total_kw - dc_size_kw) < 0.01 else f"❌ (PDF: {dc_size_kw:.3f} kW)"
+                                st.markdown(f"<span style='color:#2196F3'><strong>DC System Size Comparison:</strong> {status}</span>", unsafe_allow_html=True)
+                                st.caption(f"Compared: Calculated `{total_kw:.3f} kW` vs PDF `DC Size: {dc_size_kw:.3f} kW`")
+                            else:
+                                st.markdown(f"<span style='color:#FF9800'><strong>DC Size Comparison:</strong> ⚠️ DC Size not found in PDF</span>", unsafe_allow_html=True)
+
         st.markdown("<h2 style='font-size:32px;'>SUMMARY</h2>", unsafe_allow_html=True)
         labels = ['PASS', 'FAIL', 'MISSING']
         sizes = [match_count, mismatch_count, missing_count]
@@ -555,6 +555,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
