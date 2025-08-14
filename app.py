@@ -278,7 +278,51 @@ def get_line_with_keyword(text, keyword):
 def apply_alias(value, alias_dict):
     normalized_value = normalize_string(value)
     return alias_dict.get(normalized_value, normalized_value)
-    
+# Add DC
+STATE_MAP.update({
+    "district of columbia": "dc"
+})
+
+ABBR_TO_FULL = {abbr: full for full, abbr in STATE_MAP.items()}
+
+def normalize_state(state_str: str) -> str:
+    """Return the full state name in lowercase (e.g., 'ca' -> 'california', 'California' -> 'california')."""
+    s = str(state_str).strip().lower()
+    if not s:
+        return ""
+    if s in STATE_MAP:
+        return s  # already full name
+    # If it's an abbreviation, map to full
+    full = ABBR_TO_FULL.get(s)
+    return full if full else s
+
+def normalize_states_in_text(text: str) -> str:
+    """
+    Replace standalone 2-letter state abbreviations in free text with full names
+    using word boundaries, BEFORE general normalization.
+    Example: 'Portland, OR 97201' -> 'Portland, oregon 97201'
+    """
+    if not text:
+        return text
+
+    # Build a word-boundary regex for all two-letter abbreviations
+    abbrs = sorted(ABBR_TO_FULL.keys(), key=len, reverse=True)
+    pattern = r'(?<![A-Za-z])(' + '|'.join(map(re.escape, abbrs)) + r')(?![A-Za-z])'
+
+    def _repl(m):
+        return ABBR_TO_FULL[m.group(1).lower()]
+
+    return re.sub(pattern, _repl, text, flags=re.IGNORECASE)
+
+def block_candidates(lines):
+    """Yield 1-, 2-, and 3-line joined blocks to be robust to line wrapping."""
+    n = len(lines)
+    for i in range(n):
+        for span in (1, 2, 3):
+            if i + span <= n:
+                block = " ".join(lines[i:i+span]).strip()
+                if block:
+                    yield block    
 # State mapping dictionary
 STATE_MAP = {
     "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar", "california": "ca",
@@ -635,6 +679,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
