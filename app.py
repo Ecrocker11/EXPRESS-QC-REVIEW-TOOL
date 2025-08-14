@@ -652,7 +652,7 @@ if csv_file and pdf_file:
         
             summary_html = f"""
             <div style='display:flex; gap:20px; font-size:18px;'>
-                <span style='color:#8BC34A;'><strong>PASS:</strong> ({match_count}) {pass_pct:.1f}%</span>
+                <span style='color:green;'><strong>PASS:</strong> ({match_count}) {pass_pct:.1f}%</span>
                 <span style='color:red;'><strong>FAIL:</strong> ({mismatch_count}) {fail_pct:.1f}%</span>
                 <span style='color:orange;'><strong>MISSING:</strong> ({missing_count}) {missing_pct:.1f}%</span>
             </div>
@@ -806,6 +806,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
