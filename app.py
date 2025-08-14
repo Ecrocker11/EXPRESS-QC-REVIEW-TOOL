@@ -39,7 +39,7 @@ def contractor_name_match(value, pdf_text):
     normalized_value = normalize_string(value)
     lines = pdf_text.splitlines()
     for i in range(len(lines) - 2):
-        block = " ".join(lines[i:i+3])  # check 3-line blocks
+        block = " ".join(lines[i:i+2])  # check 3-line blocks
         if normalized_value in normalize_string(block):
             return True, block.strip()
     return False, None
@@ -573,5 +573,6 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
