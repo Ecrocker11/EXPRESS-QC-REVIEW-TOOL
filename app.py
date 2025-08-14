@@ -37,9 +37,11 @@ def extract_pdf_text(doc):
 
 def contractor_name_match(value, pdf_text):
     normalized_value = normalize_string(value)
-    for line in pdf_text.splitlines():
-        if normalized_value in normalize_string(line):
-            return True, line.strip()
+    lines = pdf_text.splitlines()
+    for i in range(len(lines) - 2):
+        block = " ".join(lines[i:i+3])  # check 3-line blocks
+        if normalized_value in normalize_string(block):
+            return True, block.strip()
     return False, None
 
 def contractor_address_match(address_dict, pdf_text):
@@ -49,12 +51,12 @@ def contractor_address_match(address_dict, pdf_text):
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_State__c", ""),
         address_dict.get("Engineering_Project__c.Customer__r.GRDS_Customer_Address_Zip__c", "")
     ]
-    pdf_lines = pdf_text.splitlines()
-    match_found = all(
-        any(normalize_string(comp) in normalize_string(line) for line in pdf_lines)
-        for comp in components if comp
-    )
-    return match_found
+    lines = pdf_text.splitlines()
+    for i in range(len(lines) - 3):
+        block = " ".join(lines[i:i+4])  # check 4-line blocks
+        if all(normalize_string(comp) in normalize_string(block) for comp in components if comp):
+            return True
+    return False
 
 def extract_module_wattage(part_number):
     part_number = str(part_number).upper()
@@ -571,4 +573,5 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
