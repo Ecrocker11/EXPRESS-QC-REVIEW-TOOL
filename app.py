@@ -587,7 +587,6 @@ if csv_file and pdf_file:
             st.markdown(f"<span style='color:#FFC107'><strong>MISSING:</strong></span> {missing_count} ({missing_pct:.1f}%)", unsafe_allow_html=True)        
 
         if mismatches or missings:
-            st.markdown("<h2 style='margin-top:0'>Summary</h2>", unsafe_allow_html=True)
         
             c1, c2 = st.columns(2)
             c1.metric("Mismatches", len(mismatches))
@@ -725,6 +724,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
