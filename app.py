@@ -77,6 +77,19 @@ def compute_extra_checks(csv_data, pdf_text):
 
     return extra
 
+def check_filename_for_special_chars(filename):
+    """
+    Check if the filename contains any disallowed special characters.
+    Returns a tuple: (status, explanation)
+    """
+    disallowed = "!@#$%^&*'"
+    if any(char in filename for char in disallowed):
+        return (
+            "❌ Invalid characters in filename",
+            f"Filename `{filename}` contains one or more of the following disallowed characters: {disallowed}"
+        )
+    return ("✅", f"Filename `{filename}` is clean.")
+
 def normalize_string(s):
     s = re.sub(r'<[^>]+>', '', str(s))  # Remove HTML tags
     return re.sub(r'[\s.,"]', '', s).lower()  # Remove whitespace, punctuation, quotes, lowercase
@@ -623,13 +636,22 @@ if csv_file and pdf_file:
                 "ESS Inverter Quantity": "Engineering_Project__c.ESS_Inverter_Quantity__c"
             })
 
+        filename_checks = []
+        if csv_file:
+            status, explanation = check_filename_for_special_chars(csv_file.name)
+            filename_checks.append(("CSV Filename Check", "-", "-", status, explanation))
+        
+        if pdf_file:
+            status, explanation = check_filename_for_special_chars(pdf_file.name)
+            filename_checks.append(("PDF Filename Check", "-", "-", status, explanation))
+
         comparison = compare_fields(csv_data, pdf_text, fields_to_check, module_qty_pdf, inverter_qty_pdf, contractor_name_pdf)
         
         # >>> NEW: compute extra checks BEFORE the summary <<<
         extra_checks = compute_extra_checks(csv_data, pdf_text)
         
         # Combine for summary + counts
-        all_items = comparison + extra_checks
+        all_items = filename_checks + comparison + extra_checks
         
         match_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("✅"))
         mismatch_count = sum(1 for _, _, _, status, _ in all_items if str(status).startswith("❌"))
@@ -806,6 +828,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
