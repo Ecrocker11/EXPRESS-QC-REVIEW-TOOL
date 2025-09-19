@@ -82,7 +82,7 @@ def check_filename_for_special_chars(filename):
     Check if the filename contains any disallowed special characters.
     Returns a tuple: (status, explanation)
     """
-    disallowed = "!@#$%^&*'"
+    disallowed = ",!@#$%^&*'"
     if any(char in filename for char in disallowed):
         return (
             "❌ Invalid characters in filename",
@@ -828,6 +828,7 @@ if csv_file and pdf_file:
     except Exception as e:
         st.error(f"Error processing files: {e}")
         st.text(traceback.format_exc())
+
 
 
 
